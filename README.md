@@ -11,7 +11,7 @@ Original wiki: https://github.com/ElectricBrainUK/UnraidAPI/wiki
 
 [Open an issue](https://github.com/bokker/UnraidAPI-RE/issues/new?assignees=&labels=Review+needed&template=bug_report.md&title=)
 
-The tags follow the unraid major releases: `bokker/unraid-re:6.11`
+The tags follow the unraid major releases and should work for minor also: `bokker/unraid-re:6.11`
 
 ## External links
 * [Unraid forum support topic](https://forums.unraid.net/topic/86354-support-electric-brain-unraid-api/)
