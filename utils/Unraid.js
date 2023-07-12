@@ -414,22 +414,22 @@ function processDockerResponse(details) {
           if (child.tags.class) {
             switch (child.tags.class) {
               case "ct-name":
-                docker.imageUrl = child.children[0].children[0].children[0].tags.src.split(
+                docker.imageUrl = child.children[1].children[0].children[0].tags.src.split(
                   "?"
                 )[0];
-                if (child.children[0].children[1].children[0].children[0]) {
+                if (child.children[1].children[1].children[0].children[0]) {
                   docker.name =
-                    child.children[0].children[1].children[0].children[0].contents;
+                    child.children[1].children[1].children[0].children[0].contents;
                 } else {
                   docker.name =
-                    child.children[0].children[1].children[0].contents;
+                    child.children[1].children[1].children[0].contents;
                 }
-                if (child.children[0].children[1].children[1].children[1]) {
+                if (child.children[1].children[1].children[1].children[1]) {
                   docker.status =
-                    child.children[0].children[1].children[1].children[1].contents;
+                    child.children[1].children[1].children[1].children[1].contents;
                 }
-                if (child.children[1] && child.children[1].contents) {
-                  docker.containerId = child.children[1].contents.replace(
+                if (child.children[2] && child.children[2].contents) {
+                  docker.containerId = child.children[2].contents.replace(
                     "Container ID: ",
                     ""
                   );
@@ -688,15 +688,15 @@ async function simplifyResponse(object, ip, auth) {
     let vm = object[i];
     let newVMObject = {};
     newVMObject.name =
-      vm.parent.children[0].children[0].children[1].children[0].contents;
-    newVMObject.id = vm.parent.children[0].children[0].children[0].tags.id.replace(
+      vm.parent.children[0].children[1].children[1].children[0].contents;
+    newVMObject.id = vm.parent.children[1].children[0].children[0].tags.id.replace(
       "vm-",
       ""
     );
     newVMObject.status =
-      vm.parent.children[0].children[0].children[1].children[1].children[1].contents;
+      vm.parent.children[0].children[1].children[1].children[1].children[1].contents;
     newVMObject.icon =
-      vm.parent.children[0].children[0].children[0].children[0].tags.src;
+      vm.parent.children[0].children[1].children[0].children[0].tags.src;
     newVMObject.coreCount = vm.parent.children[2].children[0].contents;
     newVMObject.ramAllocation = vm.parent.children[3].contents;
     newVMObject.hddAllocation = {};
