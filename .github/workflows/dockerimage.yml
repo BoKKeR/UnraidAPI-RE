@@ -30,9 +30,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v4
 
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: bokker/UnraidAPI-RE:${{ steps.package-version.outputs.current-version}}
+          tags: bokker/UnraidAPI-RE:${{ env.GITHUB_REF_SLUG }}
