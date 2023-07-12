@@ -13,6 +13,6 @@ WORKDIR ${APP_ROOT}
 # Expose the app port
 EXPOSE 80
 
-RUN npm install
+RUN npm install --omit=dev
 RUN npm run build
 CMD ["npm", "start"]
