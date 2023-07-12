@@ -18,6 +18,7 @@
     "@nuxtjs/axios": "^5.12.3",
     "@nuxtjs/pwa": "^2.6.0",
     "@nuxtjs/vuetify": "0.5.5",
+    "@nuxtjs/eslint-module": "^0.0.1",
     "axios": "^0.21.1",
     "cross-env": "^5.2.1",
     "express": "^4.16.4",
@@ -33,7 +34,6 @@
     "vuetify-loader": "^1.6.0"
   },
   "devDependencies": {
-    "@nuxtjs/eslint-module": "^0.0.1",
     "@nuxtjs/eslint-config": "^0.0.1",
     "@vue/test-utils": "^1.1.1",
     "babel-core": "7.0.0-bridge.0",
