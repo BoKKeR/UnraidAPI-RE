@@ -49,26 +49,26 @@ export default {
       fixed: false,
       items: [
         {
-          icon: 'apps',
-          title: 'Welcome',
-          to: '/'
+          icon: "apps",
+          title: "Welcome",
+          to: "/"
         },
         {
-          icon: 'bubble_chart',
-          title: 'API Docs',
-          to: '/docs'
+          icon: "bubble_chart",
+          title: "API Docs",
+          to: "/docs"
         },
         {
-          icon: 'bubble_chart',
-          title: 'Manual Config',
-          to: '/mqtt'
+          icon: "bubble_chart",
+          title: "Manual Config",
+          to: "/mqtt"
         }
       ],
       miniVariant: false,
       right: false,
       rightDrawer: false,
-      title: 'UnRaid Manager'
-    }
+      title: "UnRaid Manager"
+    };
   }
-}
+};
 </script>

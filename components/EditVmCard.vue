@@ -1,23 +1,13 @@
 <template>
-  <v-dialog
-    v-model="dialog"
-    width="500"
-  >
+  <v-dialog v-model="dialog" width="500">
     <template v-slot:activator="{ on }">
-      <v-btn
-        color="info"
-        dark
-        v-on="on"
-      >
+      <v-btn color="info" dark v-on="on">
         Edit
       </v-btn>
     </template>
 
     <v-card>
-      <v-card-title
-        class="headline grey"
-        primary-title
-      >
+      <v-card-title class="headline grey" primary-title>
         {{ vm.name }}
       </v-card-title>
 
@@ -29,11 +19,7 @@
 
       <v-card-actions>
         <v-spacer />
-        <v-btn
-          color="primary"
-          flat
-          @click="dialog = false"
-        >
+        <v-btn color="primary" flat @click="dialog = false">
           Confirm
         </v-btn>
       </v-card-actions>
@@ -42,19 +28,15 @@
 </template>
 
 <script>
-  export default {
-    name: "EditVmCard",
-    props: [
-      "vm"
-    ],
-    data() {
-      return {
-        dialog: false
-      }
-    }
-  };
+export default {
+  name: "EditVmCard",
+  props: ["vm"],
+  data() {
+    return {
+      dialog: false
+    };
+  }
+};
 </script>
 
-<style scoped>
-
-</style>
+<style scoped></style>
