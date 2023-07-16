@@ -741,7 +741,13 @@ export function getCSRFToken(server, auth) {
   })
     .then((response) => {
       callSucceeded(server);
-      return extractValue(response.data, "csrf_token=", "'");
+      const regex = /csrf_token:'[A-Za-z0-9]+'/gim;
+      const csrf_token = response?.data
+        ?.match(regex)[0]
+        ?.replace("csrf_token:", "")
+        .replaceAll("'", "");
+
+      return csrf_token;
     })
     .catch((e) => {
       console.log("Get CSRF Token for server: " + server + " Failed");
@@ -953,7 +959,11 @@ export function changeServerState(action, server, auth, token) {
   }
 }
 
-export function changeVMState(id, action, server, auth, token) {
+export async function changeVMState(id, action, server, auth, token) {
+  if (!token) {
+    token = await getCSRFToken(server, auth);
+    console.log("Got new CSRF_token: " + token);
+  }
   return axios({
     method: "POST",
     url:
@@ -989,7 +999,11 @@ export function changeVMState(id, action, server, auth, token) {
     });
 }
 
-export function changeDockerState(id, action, server, auth, token) {
+export async function changeDockerState(id, action, server, auth, token) {
+  if (!token) {
+    token = await getCSRFToken(server, auth);
+    console.log("Got new CSRF_token: " + token);
+  }
   return axios({
     method: "POST",
     url:
