@@ -306,7 +306,7 @@ function scrapeHTML(ip, serverAuth) {
         "Get Dashboard Details for ip: " +
           ip +
           " Failed with status code: " +
-          e.response
+          console.log(e.response.data)
       );
       if (e.response && e.response.status) {
         callFailed(ip, e.response.status);
@@ -377,18 +377,25 @@ function getVMs(servers, serverAuth) {
         if (response.data.toString().includes("\u0000")) {
           let parts = response.data.toString().split("\u0000");
           htmlDetails = JSON.stringify(parts[0]);
-
-          servers[ip].vm.extras = parts[1];
+          try {
+            servers[ip].vm.extras = parts[1];
+          } catch (error) {
+            console.log("Error in  servers[ip].vm.extras = parts[1];");
+          }
         } else {
           htmlDetails = response.data.toString();
         }
 
         let details = parseHTML(htmlDetails);
-        servers[ip].vm.details = await processVMResponse(
-          details,
-          ip,
-          serverAuth[ip]
-        );
+        try {
+          servers[ip].vm.details = await processVMResponse(
+            details,
+            ip,
+            serverAuth[ip]
+          );
+        } catch (error) {
+          console.log("servers[ip].vm.details");
+        }
         updateFile(servers, ip, "vm");
       })
       .catch((e) => {
@@ -689,7 +696,7 @@ async function simplifyResponse(object, ip, auth) {
     let newVMObject = {};
     newVMObject.name =
       vm.parent.children[0].children[1].children[1].children[0].contents;
-    newVMObject.id = vm.parent.children[1].children[0].children[0].tags.id.replace(
+    newVMObject.id = vm.parent.children[0].children[1].children[0].tags.id.replace(
       "vm-",
       ""
     );
@@ -702,8 +709,9 @@ async function simplifyResponse(object, ip, auth) {
     newVMObject.hddAllocation = {};
     newVMObject.hddAllocation.all = [];
     newVMObject.hddAllocation.total = vm.parent.children[4].contents;
+
     if (vm.child.children[0].children[0].children[0].children) {
-      vm.child.children[0].children[0].children[1].children.forEach(
+      vm.child.children[0].children[0].children[0].children.forEach(
         (driveDetails) => {
           let detailsArr = driveDetails.children.map((drive) => {
             return drive.contents;
@@ -741,7 +749,12 @@ export function getCSRFToken(server, auth) {
   })
     .then((response) => {
       callSucceeded(server);
-      return extractValue(response.data, "csrf_token=", "'");
+      const regex = /csrf_token:'[A-Za-z0-9]+'/gim;
+      const csrf_token = response?.data
+        ?.match(regex)[0]
+        ?.replace("csrf_token:", "")
+        .replaceAll("'", "");
+      return csrf_token;
     })
     .catch((e) => {
       console.log("Get CSRF Token for server: " + server + " Failed");
@@ -953,7 +966,11 @@ export function changeServerState(action, server, auth, token) {
   }
 }
 
-export function changeVMState(id, action, server, auth, token) {
+export async function changeVMState(id, action, server, auth, token) {
+  if (!token) {
+    token = await getCSRFToken(server, auth);
+    console.log("Got new CSRF_token: " + token);
+  }
   return axios({
     method: "POST",
     url:
@@ -989,7 +1006,11 @@ export function changeVMState(id, action, server, auth, token) {
     });
 }
 
-export function changeDockerState(id, action, server, auth, token) {
+export async function changeDockerState(id, action, server, auth, token) {
+  if (!token) {
+    token = await getCSRFToken(server, auth);
+    console.log("Got new CSRF_token: " + token);
+  }
   return axios({
     method: "POST",
     url:
@@ -1290,18 +1311,21 @@ function extractUSBData(response, vmObject, ip) {
     usb.name = row.substring(row.indexOf("/") + 3);
     usb.connected = true;
     usbs.push(usb);
-
     usbInfo = usbInfo.replace('value="', "");
   }
   let rawdata = fs.readFileSync("config/servers.json");
   let servers = JSON.parse(rawdata);
   let oldUsbs = [];
-  if (
-    servers[ip].vm &&
-    servers[ip].vm.details[vmObject.id] &&
-    servers[ip].vm.details[vmObject.id].edit
-  ) {
-    oldUsbs = servers[ip].vm.details[vmObject.id].edit.usbs;
+  try {
+    if (
+      servers[ip].vm &&
+      servers[ip].vm.details[vmObject.id] &&
+      servers[ip].vm.details[vmObject.id].edit
+    ) {
+      oldUsbs = servers[ip].vm.details[vmObject.id].edit.usbs;
+    }
+  } catch (error) {
+    console.log("error getting old Usb devices for VM");
   }
   if (oldUsbs && oldUsbs.length > usbs.length) {
     oldUsbs.forEach((usb) => {
@@ -1472,17 +1496,11 @@ function extractVMDetails(vmObject, response, ip) {
     .join("<")
     .split("&gt;")
     .join(">");
-
   vmObject.edit = getVMStaticData(response);
-
   vmObject.edit.vcpus = extractCPUDetails(response);
-
   vmObject.edit.disks = extractDiskData(response);
-
   vmObject.edit.shares = extractShareData(response);
-
   vmObject.edit.usbs = extractUSBData(response, vmObject, ip);
-
   vmObject.edit.pcis = extractPCIData(response);
 
   extractGPUData(response, vmObject);
