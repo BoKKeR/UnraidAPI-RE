@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from "axios";
+import axios from "axios";
 import fs from "fs";
 import http from "http";
 import https from "https";
@@ -18,6 +18,7 @@ import {
   UsbData,
   VMData
 } from "~/types";
+import { extractUsbDetails } from "./extractUsbDetails";
 const fetch = require("node-fetch");
 
 const FormData = require("form-data");
@@ -191,18 +192,10 @@ function getUSBDetails(servers, serverAuth) {
         .then((response) => {
           callSucceeded(ip);
           updateFile(servers, ip, "status");
-
           servers[ip].usbDetails = [];
           while (response.data.toString().includes('<label for="usb')) {
-            let row = extractValue(
-              response.data,
-              '<label for="usb',
-              "</label>"
-            );
-            servers[ip].usbDetails.push({
-              id: extractValue(row, 'value="', '"'),
-              name: extractValue(row, "/> ", " (")
-            });
+            const usbDevice = extractUsbDetails(response.data);
+            servers[ip].usbDetails.push(usbDevice);
             response.data = response.data.replace('<label for="usb', "");
           }
           updateFile(servers, ip, "usbDetails");
@@ -1504,7 +1497,13 @@ function extractVMDetails(vmObject, response, ip) {
   return vmObject;
 }
 
-export async function requestChange(ip, id, auth, vmObject, create) {
+export async function requestChange(
+  ip: string,
+  id: string,
+  auth: string,
+  vmObject,
+  create
+) {
   return axios({
     method: "POST",
     url:
@@ -1534,7 +1533,13 @@ export async function requestChange(ip, id, auth, vmObject, create) {
     });
 }
 
-async function buildForm(ip, auth, id, vmObject, create) {
+async function buildForm(
+  ip: string,
+  auth: string,
+  id: string,
+  vmObject,
+  create
+) {
   let form = getStaticPart(vmObject, id, create);
   form += "&csrf_token=" + (await getCSRFToken(ip, auth));
   form = getCPUPart(vmObject, form);
