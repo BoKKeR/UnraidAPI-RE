@@ -1,0 +1,36 @@
+{
+    "compilerOptions": {
+      "target": "ESNext",
+      "module": "CommonJS",
+      "moduleResolution": "Node",
+      "lib": [
+        "ESNext",
+        "ESNext.AsyncIterable",
+        "DOM"
+      ],
+      "esModuleInterop": true,
+      "allowJs": true,
+      "noImplicitAny": false,
+      "sourceMap": true,
+      "strict": true,
+      "noEmit": true,
+      "baseUrl": ".",
+      "paths": {
+        "~/*": [
+          "./*"
+        ],
+        "@/*": [
+          "./*"
+        ]
+      },
+      "types": [
+        "@nuxt/types",
+        "@nuxt/typescript-build",
+        "@types/node",
+        "@types/jest"
+      ]
+    },
+    "exclude": [
+      "node_modules"
+    ]
+  }

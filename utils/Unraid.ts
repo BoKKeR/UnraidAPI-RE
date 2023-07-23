@@ -2,7 +2,9 @@ import axios from "axios";
 import fs from "fs";
 import http from "http";
 import https from "https";
-
+import { extractServerDetails } from "./extractServerDetails";
+import { extractDiskDetails } from "./extractDiskDetails";
+import { extractValue } from "./extractValue";
 const fetch = require("node-fetch");
 
 const FormData = require("form-data");
@@ -233,33 +235,17 @@ function getServerDetails(servers, serverAuth) {
   });
 }
 
-function extractDiskDetails(details, tag, name) {
-  if (details[tag].includes(" used of ")) {
-    let diskDetails = details[tag].split(" used of ");
-
-    details[name + "UsedSpace"] = diskDetails[0];
-    details[name + "TotalSpace"] = diskDetails[1].substring(
-      0,
-      diskDetails[1].indexOf(" (")
-    );
-
-    let totalSizeAndDenomination = details[name + "TotalSpace"].split(" ");
-    let usedSizeAndDenomination = details[name + "UsedSpace"].split(" ");
-    let usedNumber = usedSizeAndDenomination[0];
-    let totalNumber = totalSizeAndDenomination[0];
-
-    if (usedSizeAndDenomination[1] !== totalSizeAndDenomination[1]) {
-      totalNumber *= 1024;
+const writeTestFile = (data) => {
+  const path = "config/6.12.html";
+  fs.writeFile(path, data, (err) => {
+    if (err) {
+      console.error(err);
     }
+    console.log(`${path} written successfully`);
+  });
+};
 
-    let freeNumber = totalNumber - usedNumber;
-    details[name + "FreeSpace"] = freeNumber + " " + usedSizeAndDenomination[1];
-  } else {
-    details[tag] = undefined;
-  }
-}
-
-function scrapeHTML(ip, serverAuth) {
+function scrapeHTML(ip: string, serverAuth) {
   return axios({
     method: "get",
     url: (ip.includes("http") ? ip : "http://" + ip) + "/Dashboard",
@@ -270,31 +256,11 @@ function scrapeHTML(ip, serverAuth) {
   })
     .then((response) => {
       callSucceeded(ip);
-      let details = {
-        title: extractValue(response.data, "title>", "/"),
-        cpu: extractReverseValue(
-          extractValue(response.data, "cpu_view'>", "</tr"),
-          "<br>",
-          ">"
-        ),
-        memory: extractValue(response.data, "Memory<br><span>", "<"),
-        motherboard: extractValue(
-          response.data,
-          "<tr class='mb_view'><td></td><td colspan='3'>",
-          "<"
-        ),
-        diskSpace: extractValue(
-          extractValue(response.data, "Go to disk settings", "/span>"),
-          "<span class='info'>",
-          "<"
-        ),
-        cacheSpace: extractValue(
-          extractValue(response.data, "Go to cache settings", "/span>"),
-          "<span class='info'>",
-          "<"
-        ),
-        version: extractValue(response.data, "Version: ", "&nbsp;")
-      };
+
+      if (false) {
+        writeTestFile(response.data);
+      }
+      let details = extractServerDetails(response.data);
 
       extractDiskDetails(details, "diskSpace", "array");
       extractDiskDetails(details, "cacheSpace", "cache");
@@ -317,7 +283,7 @@ function scrapeHTML(ip, serverAuth) {
     });
 }
 
-function scrapeMainHTML(ip, serverAuth) {
+function scrapeMainHTML(ip: string, serverAuth) {
   return axios({
     method: "get",
     url: (ip.includes("http") ? ip : "http://" + ip) + "/Main",
@@ -526,7 +492,7 @@ function getDockers(servers, serverAuth) {
   });
 }
 
-function updateFile(servers, ip, tag) {
+function updateFile(servers, ip: string, tag: string) {
   let oldServers = {};
   try {
     let rawdata = fs.readFileSync("config/servers.json");
@@ -558,15 +524,15 @@ function parseHTML(html) {
   return parsedHtml;
 }
 
-function isRemaining(remaining) {
+function isRemaining(remaining: string) {
   return remaining && remaining.indexOf("<") >= 0;
 }
 
-function isAnyClosingTag(remaining) {
+function isAnyClosingTag(remaining: string) {
   return remaining && remaining.indexOf("</") === 0;
 }
 
-function parseTag(tag, remaining) {
+function parseTag(tag: string, remaining: string) {
   remaining = remaining.replace(tag, "");
   let object = {};
   const open = processTags(tag, object);
@@ -637,7 +603,7 @@ function processTags(tag, object) {
   return open;
 }
 
-function clean(value) {
+function clean(value: string) {
   if (value) {
     return value.replace(/\'/g, "");
   }
@@ -738,7 +704,7 @@ async function simplifyResponse(object, ip, auth) {
   return temp;
 }
 
-export function getCSRFToken(server, auth) {
+export function getCSRFToken(server, auth: string) {
   return axios({
     method: "get",
     url: (server.includes("http") ? server : "http://" + server) + "/Dashboard",
@@ -767,7 +733,11 @@ export function getCSRFToken(server, auth) {
     });
 }
 
-export function extractReverseValue(data, value, terminator) {
+export function extractReverseValue(
+  data: string,
+  value: string,
+  terminator: string
+) {
   return extractValue(
     data
       .split("")
@@ -785,11 +755,6 @@ export function extractReverseValue(data, value, terminator) {
     .split("")
     .reverse()
     .join("");
-}
-
-export function extractValue(data, value, terminator) {
-  let start = data.substring(data.toString().indexOf(value) + value.length);
-  return start.substring(0, start.indexOf(terminator));
 }
 
 export function changeArrayState(action, server, auth, token) {
@@ -1006,7 +971,13 @@ export async function changeVMState(id, action, server, auth, token) {
     });
 }
 
-export async function changeDockerState(id, action, server, auth, token) {
+export async function changeDockerState(
+  id: string,
+  action: string,
+  server: string,
+  auth: string,
+  token: string
+) {
   if (!token) {
     token = await getCSRFToken(server, auth);
     console.log("Got new CSRF_token: " + token);
@@ -1052,7 +1023,12 @@ export async function changeDockerState(id, action, server, auth, token) {
     });
 }
 
-export function gatherDetailsFromEditVM(ip, id, vmObject, auth) {
+export function gatherDetailsFromEditVM(
+  ip: string,
+  id: string,
+  vmObject,
+  auth
+) {
   let rawdata = fs.readFileSync("config/servers.json");
   let servers = JSON.parse(rawdata);
   if (!vmObject) {

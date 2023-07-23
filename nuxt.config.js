@@ -19,6 +19,13 @@ const URLS = {
 
 module.exports = {
   telemetry: false,
+
+  typescript: {
+    typeCheck: false
+  },
+
+  buildModules: ["@nuxtjs/dotenv", "@nuxt/typescript-build"],
+
   mode: "universal",
   /*
    ** Headers of the page
@@ -88,8 +95,8 @@ module.exports = {
     { path: URLS.VM_CREATE, handler: "~/api/createVM.js" },
     { path: URLS.MQTT_DEVICE_CHANGE, handler: "~/api/mqttDevices.js" },
     { path: URLS.DELETE_SERVER, handler: "~/api/deleteServer.js" },
-    { path: URLS.PROXY_IMAGE, handler: "~/api/proxyImage.js" },
-    { path: URLS.PROXY_IMAGE_VM, handler: "~/api/proxyImage.js" }
+    { path: URLS.PROXY_IMAGE, handler: "~/api/proxyImage" },
+    { path: URLS.PROXY_IMAGE_VM, handler: "~/api/proxyImage" }
   ],
   /*
    ** vuetify module configuration
