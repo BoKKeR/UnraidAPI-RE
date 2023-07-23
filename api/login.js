@@ -19,9 +19,6 @@ export default function(req, res, next) {
 }
 
 async function connectToServer(data) {
-  console.log("KEYSTOREAGE");
-  console.log(process.env.KeyStorage);
-  console.log("KEYSTOREAGE");
   let response = {};
   let servers = {};
   try {
