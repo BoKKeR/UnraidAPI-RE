@@ -1,10 +1,23 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import fs from "fs";
 import http from "http";
 import https from "https";
 import { extractServerDetails } from "./extractServerDetails";
 import { extractDiskDetails } from "./extractDiskDetails";
 import { extractValue } from "./extractValue";
+import {
+  Disk,
+  Docker,
+  GPUData,
+  HDD,
+  HDDAllocationInfo,
+  NicData,
+  PCIData,
+  ShareData,
+  SoundData,
+  UsbData,
+  VMData
+} from "~/types";
 const fetch = require("node-fetch");
 
 const FormData = require("form-data");
@@ -71,7 +84,7 @@ export async function getUnraidDetails(servers, serverAuth) {
 }
 
 function logIn(servers, serverAuth) {
-  let promises = [];
+  let promises: Promise<any>[] = [];
   Object.keys(servers).forEach((ip) => {
     if (!serverAuth[ip] || (authCookies[ip] && authCookies[ip] !== undefined)) {
       if (!serverAuth[ip]) {
@@ -102,7 +115,7 @@ function logIn(servers, serverAuth) {
   return Promise.all(promises);
 }
 
-function logInToUrl(url, data, ip) {
+function logInToUrl(url: string, data: any, ip: string) {
   return axios({
     url,
     method: "POST",
@@ -135,7 +148,7 @@ function logInToUrl(url, data, ip) {
     });
 }
 
-export function getPCIDetails(servers, skipSave) {
+export function getPCIDetails(servers, skipSave?: boolean) {
   Object.keys(servers).forEach((ip) => {
     if (
       servers[ip].vm &&
@@ -381,7 +394,7 @@ function processDockerResponse(details) {
   let containers = {};
   details.forEach((row) => {
     if (!row.content || !row.content.includes("undefined")) {
-      let docker = {};
+      let docker: Docker = {};
       row.children.forEach((child, index) => {
         try {
           if (child.tags.class) {
@@ -655,11 +668,10 @@ function groupVmDetails(response, object) {
   });
 }
 
-async function simplifyResponse(object, ip, auth) {
+async function simplifyResponse(object, ip: string, auth: string) {
   let temp = {};
-  for (let i = 0; i < object.length; i++) {
-    let vm = object[i];
-    let newVMObject = {};
+  for (const vm of object) {
+    let newVMObject = {} as VMData;
     newVMObject.name =
       vm.parent.children[0].children[1].children[1].children[0].contents;
     newVMObject.id = vm.parent.children[0].children[1].children[0].tags.id.replace(
@@ -672,7 +684,7 @@ async function simplifyResponse(object, ip, auth) {
       vm.parent.children[0].children[1].children[0].children[0].tags.src;
     newVMObject.coreCount = vm.parent.children[2].children[0].contents;
     newVMObject.ramAllocation = vm.parent.children[3].contents;
-    newVMObject.hddAllocation = {};
+    newVMObject.hddAllocation = {} as HDDAllocationInfo;
     newVMObject.hddAllocation.all = [];
     newVMObject.hddAllocation.total = vm.parent.children[4].contents;
 
@@ -687,7 +699,7 @@ async function simplifyResponse(object, ip, auth) {
             interface: detailsArr[1],
             allocated: detailsArr[2],
             used: detailsArr[3]
-          };
+          } as HDD;
           newVMObject.hddAllocation.all.push(details);
         }
       );
@@ -757,7 +769,12 @@ export function extractReverseValue(
     .join("");
 }
 
-export function changeArrayState(action, server, auth, token) {
+export function changeArrayState(
+  action: string,
+  server: string,
+  auth: string,
+  token: string
+) {
   return axios({
     method: "POST",
     url:
@@ -779,7 +796,7 @@ export function changeArrayState(action, server, auth, token) {
       return response.data;
     })
     .catch((e) => {
-      console.log("Change Array State for ip: " + ip + " Failed");
+      console.log("Change Array State for ip: " + server + " Failed");
       if (e.response && e.response.status) {
         callFailed(server, e.response.status);
       } else {
@@ -1181,7 +1198,7 @@ function getVMStaticData(response) {
 }
 
 function extractCPUDetails(response) {
-  let cpuDetails = [];
+  let cpuDetails: string[] = [];
   while (response.data.includes("for='vcpu")) {
     let row = extractValue(response.data, "<label for='vcpu", "</label>");
     if (row.includes("checked")) {
@@ -1193,7 +1210,7 @@ function extractCPUDetails(response) {
 }
 
 function extractDiskData(response) {
-  let disks = [];
+  let disks: Disk[] = [];
   while (response.data.includes('id="disk_')) {
     let row = extractValue(response.data, 'id="disk_', ">");
     let disk = extractValue(row, "", '"');
@@ -1245,7 +1262,7 @@ function extractDiskData(response) {
 }
 
 function extractShareData(response) {
-  let shares = [];
+  let shares: ShareData[] = [];
   response.data.replace(
     '<script type="text/html" id="tmplShare">\n' +
       '                                                                                <table class="domain_os other">\n' +
@@ -1275,11 +1292,11 @@ function extractShareData(response) {
 }
 
 function extractUSBData(response, vmObject, ip) {
-  let usbs = [];
+  let usbs: UsbData[] = [];
   let usbInfo = extractValue(response.data, "<td>USB Devices:</td>", "</td>");
   while (usbInfo.includes('value="')) {
     let row = extractValue(usbInfo, 'value="', " (");
-    let usb = {};
+    let usb = {} as UsbData;
     if (row.includes("checked")) {
       usb.checked = true;
     }
@@ -1291,7 +1308,7 @@ function extractUSBData(response, vmObject, ip) {
   }
   let rawdata = fs.readFileSync("config/servers.json");
   let servers = JSON.parse(rawdata);
-  let oldUsbs = [];
+  let oldUsbs: UsbData[] = [];
   try {
     if (
       servers[ip].vm &&
@@ -1315,10 +1332,10 @@ function extractUSBData(response, vmObject, ip) {
 }
 
 function extractPCIData(response) {
-  let pcis = [];
+  let pcis: PCIData[] = [];
   while (response.data.includes(' name="pci[]" id')) {
     let row = extractValue(response.data, ' name="pci[]" id', "/>");
-    let device = {};
+    let device = {} as PCIData;
     device.name = extractValue(
       extractValue(response.data, ' name="pci[]" id', "/label>"),
       ">",
@@ -1338,7 +1355,7 @@ function extractPCIData(response) {
 function extractIndividualGPU(gpuInfo, gpuNo, vmObject, response) {
   while (gpuInfo.includes("<option value='")) {
     let row = extractValue(gpuInfo, "<option value='", ">");
-    let gpu = {};
+    let gpu = {} as GPUData;
     gpu.gpu = true;
     gpu.id = row.substring(0, row.indexOf("'"));
     gpu.name = extractValue(
@@ -1417,7 +1434,7 @@ function extractSoundData(response, vmObject) {
   let soundInfo = extractValue(response.data, "<td>Sound Card:</td>", "</td>");
   while (soundInfo.includes("<option value='")) {
     let row = extractValue(soundInfo, "<option value='", ">");
-    let soundCard = {};
+    let soundCard = {} as SoundData;
     soundCard.sound = true;
     soundCard.name = extractValue(
       extractValue(soundInfo, "<option value='", "/option>"),
@@ -1442,9 +1459,9 @@ function extractNICInformation(response) {
   );
   let nicNo = 0;
 
-  let nics = [];
+  let nics: NicData[] = [];
   while (nicInfo.includes("<td>Network MAC:</td>")) {
-    let nic = {};
+    let nic = {} as NicData;
     nic.mac = extractValue(
       nicInfo,
       'name="nic[' + nicNo + '][mac]" class="narrow" value="',
@@ -1529,7 +1546,7 @@ async function buildForm(ip, auth, id, vmObject, create) {
   return form;
 }
 
-export function getStaticPart(vmObject, id, create) {
+export function getStaticPart(vmObject, id: string, create: string) {
   return (
     "template%5Bos%5D=" +
     vmObject.template_os +
@@ -1700,11 +1717,11 @@ export function flipPCICheck(details, id) {
 
 let failed = {};
 
-function callSucceeded(ip) {
+function callSucceeded(ip: string) {
   failed[ip] = 0;
 }
 
-function callFailed(ip, status) {
+function callFailed(ip: string, status: number) {
   if (!failed[ip]) {
     failed[ip] = 1;
   } else {
