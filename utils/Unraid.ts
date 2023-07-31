@@ -255,7 +255,7 @@ function scrapeHTML(ip: string, serverAuth) {
     .then((response) => {
       callSucceeded(ip);
 
-      writeTestFile(response.data, "dashboard");
+      writeTestFile(response.data, "Dashboard");
 
       let details = extractServerDetails(response.data);
 
