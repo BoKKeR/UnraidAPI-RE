@@ -19,6 +19,8 @@ import {
   VMData
 } from "~/types";
 import { extractUsbDetails } from "./extractUsbDetails";
+import writeTestFile from "./writeTestFile";
+
 const fetch = require("node-fetch");
 
 const FormData = require("form-data");
@@ -241,16 +243,6 @@ function getServerDetails(servers, serverAuth) {
   });
 }
 
-const writeTestFile = (data) => {
-  const path = "config/6.12.html";
-  fs.writeFile(path, data, (err) => {
-    if (err) {
-      console.error(err);
-    }
-    console.log(`${path} written successfully`);
-  });
-};
-
 function scrapeHTML(ip: string, serverAuth) {
   return axios({
     method: "get",
@@ -263,9 +255,8 @@ function scrapeHTML(ip: string, serverAuth) {
     .then((response) => {
       callSucceeded(ip);
 
-      if (false) {
-        writeTestFile(response.data);
-      }
+      writeTestFile(response.data, "dashboard");
+
       let details = extractServerDetails(response.data);
 
       extractDiskDetails(details, "diskSpace", "array");
@@ -346,6 +337,9 @@ function getVMs(servers, serverAuth) {
         callSucceeded(ip);
         servers[ip].vm = {};
         let htmlDetails;
+
+        writeTestFile(response.data, "VMs");
+
         if (response.data.toString().includes("\u0000")) {
           let parts = response.data.toString().split("\u0000");
           htmlDetails = JSON.stringify(parts[0]);
