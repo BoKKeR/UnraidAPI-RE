@@ -1,7 +1,6 @@
 import {
   addPCICheck,
   extractReverseValue,
-  extractValue,
   flipPCICheck,
   getCPUPart,
   getDiskPart,
@@ -10,10 +9,10 @@ import {
   getPCIPart,
   getSharePart,
   getStaticPart,
-  getUnraidDetails,
   getUSBPart,
   removePCICheck
 } from "../../../utils/Unraid";
+import { extractValue } from "./../../../utils/extractValue";
 
 describe("PCI Check Changes", () => {
   let examplePCIInput = {
