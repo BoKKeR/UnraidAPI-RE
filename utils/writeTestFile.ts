@@ -1,7 +1,7 @@
 import fs from "fs";
 
-const writeTestFile = (data: string, name: string) => {
-  if (process.env.WRITE_HTML_OUTPUT === "true") {
+const writeTestFile = (data: string, name: string, override?: boolean) => {
+  if (process.env.WRITE_HTML_OUTPUT === "true" || override) {
     const path = `config/html_output`;
     const file = `${name}.html`;
     const fullPath = `${path}/${file}`;
