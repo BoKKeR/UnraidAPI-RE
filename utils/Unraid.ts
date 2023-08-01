@@ -308,7 +308,7 @@ function scrapeMainHTML(ip: string, serverAuth) {
     })
     .catch((e) => {
       console.log("Get Main Details for ip: " + ip + " Failed");
-      if (e.response && e.response.status) {
+      if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
         callFailed(ip, 404);
