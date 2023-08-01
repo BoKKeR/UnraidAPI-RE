@@ -35,10 +35,12 @@ let authCookies = {};
 
 export async function getImage(servers, res, path) {
   let serverAuth = JSON.parse(
-    fs.readFileSync(
-      (process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/") +
-        "mqttKeys"
-    )
+    fs
+      .readFileSync(
+        (process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/") +
+          "mqttKeys"
+      )
+      .toString()
   );
   await logIn(servers, serverAuth);
   let sent = false;
@@ -72,7 +74,7 @@ export async function getImage(servers, res, path) {
         });
       })
       .catch((err) => {
-        // console.log(err);
+        console.log(err);
       });
   });
 }
@@ -136,12 +138,11 @@ function logInToUrl(url: string, data: any, ip: string) {
     })
     .catch((error) => {
       if (
-        error.response &&
-        error.response.headers["set-cookie"] &&
+        error.response?.headers["set-cookie"] &&
         error.response.headers["set-cookie"][0]
       ) {
         authCookies[ip] = error.response.headers["set-cookie"][0];
-      } else if (error.response && error.response.headers.location) {
+      } else if (error.response?.headers.location) {
         return logInToUrl(
           error.response.headers.location,
           data,
@@ -154,8 +155,7 @@ function logInToUrl(url: string, data: any, ip: string) {
 export function getPCIDetails(servers, skipSave?: boolean) {
   Object.keys(servers).forEach((ip) => {
     if (
-      servers[ip].vm &&
-      servers[ip].vm.details &&
+      servers[ip].vm?.details &&
       Object.keys(servers[ip].vm.details).length > 0 &&
       servers[ip].vm.details[Object.keys(servers[ip].vm.details)[0]].edit
     ) {
@@ -176,8 +176,7 @@ function getUSBDetails(servers, serverAuth) {
       return;
     }
     if (
-      servers[ip].vm &&
-      servers[ip].vm.details &&
+      servers[ip].vm?.details &&
       Object.keys(servers[ip].vm.details).length > 0
     ) {
       axios({
@@ -204,7 +203,7 @@ function getUSBDetails(servers, serverAuth) {
         })
         .catch((e) => {
           console.log("Get USB Details for ip: " + ip + " Failed");
-          if (e.response && e.response.status) {
+          if (e.response?.status) {
             callFailed(ip, e.response.status);
           } else {
             callFailed(ip, 404);
@@ -271,7 +270,7 @@ function scrapeHTML(ip: string, serverAuth) {
           " Failed with status code: " +
           console.log(e.response.data)
       );
-      if (e.response && e.response.status) {
+      if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
         callFailed(ip, 404);
@@ -366,7 +365,7 @@ function getVMs(servers, serverAuth) {
       })
       .catch((e) => {
         console.log("Get VM Details for ip: " + ip + " Failed");
-        if (e.response && e.response.status) {
+        if (e.response?.status) {
           callFailed(ip, e.response.status);
         } else {
           callFailed(ip, 404);
@@ -381,7 +380,7 @@ function processDockerResponse(details) {
   let containers = {};
   details.forEach((row) => {
     if (!row.content || !row.content.includes("undefined")) {
-      let docker: Docker = {};
+      let docker: Partial<Docker> = {};
       row.children.forEach((child, index) => {
         try {
           if (child.tags.class) {
@@ -723,7 +722,7 @@ export function getCSRFToken(server, auth: string) {
     })
     .catch((e) => {
       console.log("Get CSRF Token for server: " + server + " Failed");
-      if (e.response && e.response.status) {
+      if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
         callFailed(server, 404);
@@ -784,7 +783,7 @@ export function changeArrayState(
     })
     .catch((e) => {
       console.log("Change Array State for ip: " + server + " Failed");
-      if (e.response && e.response.status) {
+      if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
         callFailed(server, 404);
@@ -966,7 +965,7 @@ export async function changeVMState(id, action, server, auth, token) {
     })
     .catch((e) => {
       console.log("Change VM State for ip: " + server + " Failed");
-      if (e.response && e.response.status) {
+      if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
         callFailed(server, 404);
@@ -1018,7 +1017,7 @@ export async function changeDockerState(
     })
     .catch((e) => {
       console.log("Change Docker State for ip: " + server + " Failed");
-      if (e.response && e.response.status) {
+      if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
         callFailed(server, 404);
@@ -1034,7 +1033,7 @@ export function gatherDetailsFromEditVM(
   auth
 ) {
   let rawdata = fs.readFileSync("config/servers.json");
-  let servers = JSON.parse(rawdata);
+  let servers = JSON.parse(rawdata.toString());
   if (!vmObject) {
     vmObject = servers[ip].vm.details[id];
   }
@@ -1053,7 +1052,7 @@ export function gatherDetailsFromEditVM(
     })
     .catch((e) => {
       console.log("Get VM Edit details for ip: " + ip + " Failed");
-      if (e.response && e.response.status) {
+      if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
         callFailed(ip, 404);
@@ -1294,14 +1293,10 @@ function extractUSBData(response, vmObject, ip) {
     usbInfo = usbInfo.replace('value="', "");
   }
   let rawdata = fs.readFileSync("config/servers.json");
-  let servers = JSON.parse(rawdata);
+  let servers = JSON.parse(rawdata.toString());
   let oldUsbs: UsbData[] = [];
   try {
-    if (
-      servers[ip].vm &&
-      servers[ip].vm.details[vmObject.id] &&
-      servers[ip].vm.details[vmObject.id].edit
-    ) {
+    if (servers[ip].vm?.details[vmObject.id]?.edit) {
       oldUsbs = servers[ip].vm.details[vmObject.id].edit.usbs;
     }
   } catch (error) {
@@ -1339,7 +1334,7 @@ function extractPCIData(response) {
   return pcis;
 }
 
-function extractIndividualGPU(gpuInfo, gpuNo, vmObject, response) {
+function extractIndividualGPU(gpuInfo, gpuNo: number, vmObject, response) {
   while (gpuInfo.includes("<option value='")) {
     let row = extractValue(gpuInfo, "<option value='", ">");
     let gpu = {} as GPUData;
@@ -1518,7 +1513,7 @@ export async function requestChange(
     })
     .catch((e) => {
       console.log("Make Edit for ip: " + ip + " Failed");
-      if (e.response && e.response.status) {
+      if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
         callFailed(ip, 404);
@@ -1690,19 +1685,19 @@ export function getNetworkPart(vmObject, form) {
   return form;
 }
 
-export function removePCICheck(details, id) {
+export function removePCICheck(details, id: string) {
   details.pcis
     .filter((pciDevice) => pciDevice.id.split(".")[0] === id.split(".")[0])
     .map((device) => (device.checked = false));
 }
 
-export function addPCICheck(details, id) {
+export function addPCICheck(details, id: string) {
   details.pcis
     .filter((pciDevice) => pciDevice.id.split(".")[0] === id.split(".")[0])
     .map((device) => (device.checked = true));
 }
 
-export function flipPCICheck(details, id) {
+export function flipPCICheck(details, id: string) {
   let check;
   details.pcis
     .filter((pciDevice) => pciDevice.id.split(".")[0] === id.split(".")[0])
