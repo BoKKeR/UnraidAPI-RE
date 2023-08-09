@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>Tower/UpdateVM</title>
+<title>UNRAIDVM/UpdateVM</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta http-equiv="Content-Security-Policy" content="block-all-mixed-content">
@@ -9,7 +9,7 @@
 <meta name="viewport" content="width=1300">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="same-origin">
-<link type="image/png" rel="shortcut icon" href="/webGui/images/yellow-on.png">
+<link type="image/png" rel="shortcut icon" href="/webGui/images/green-on.png">
 <link type="text/css" rel="stylesheet" href="/webGui/styles/default-fonts.css?v=1663520428">
 <link type="text/css" rel="stylesheet" href="/webGui/styles/default-cases.css?v=1663520363">
 <link type="text/css" rel="stylesheet" href="/webGui/styles/font-awesome.css?v=1663520455">
@@ -44,8 +44,8 @@ Shadowbox.init({skipSetup:true});
 context.init();
 
 // server uptime
-var uptime = 169013.20;
-var expiretime = 1691943071;
+var uptime = 1231.29;
+var expiretime = 0;
 var before = new Date();
 
 // page timer events
@@ -62,7 +62,7 @@ addAlert.plg = $.cookie('addAlert-plg');
 addAlert.func = $.cookie('addAlert-func');
 
 // current csrf_token
-var csrf_token = "3A3E0FDDB4497156";
+var csrf_token = "E1D733169414A4C4";
 
 // form has unsaved changes indicator
 var formHasUnsavedChanges = false;
@@ -590,9 +590,9 @@ function upcEnv(str, reload = true, session = false) { // overwrite upc src
   api-version=""
   banner=""
   bgcolor=""
-  csrf="3A3E0FDDB4497156"
+  csrf="E1D733169414A4C4"
   displaydesc="true"
-  expiretime="1691943071000"
+  expiretime="0"
   hide-my-servers="yes"
   locale="en_US"
   locale-messages="%7B%22en_US%22%3A%7B%22getStarted%22%3A%22Get%20Started%22%2C%22signIn%22%3A%22Sign%20In%22%2C%22signUp%22%3A%22Sign%20Up%22%2C%22signInUp%22%3A%22Sign%20In%20%2F%20Up%22%2C%22signInUnraidNetAccount%22%3A%22Sign%20In%20with%20Unraid.net%20Account%22%2C%22signOut%22%3A%22Sign%20Out%22%2C%22error%22%3A%22Error%22%2C%22fixError%22%3A%22Fix%20Error%22%2C%22closeLaunchpad%22%3A%22Close%20Launchpad%20and%20continue%20to%20webGUI%22%2C%22installPlugin%22%3A%22Install%20Plugin%22%2C%22noThanks%22%3A%22No%20thanks%22%2C%22closePromo%22%3A%22Close%20Connect%20details%20and%20continue%20to%20webGUI%22%2C%22promoHeading%22%3A%22Enhance%20your%20Unraid%20experience%20with%20these%3Cbr%3E%20Connect%20%28BETA%29%20features%22%2C%22learnMore%22%3A%22Learn%20more%22%2C%22checkoutTheMyServersDocs%22%3A%22Checkout%20the%20Connect%20docs%22%2C%22popUp%22%3A%22Pop-up%22%2C%22close%22%3A%22Close%22%2C%22backToPopUp%22%3A%22Back%20to%20Pop-up%22%2C%22closePopUp%22%3A%22Close%20Pop-up%22%2C%22contactSupport%22%3A%22Contact%20Support%22%2C%22lanIp%22%3A%22Click%20to%20copy%20LAN%20IP%20%7B0%7D%22%2C%22lanIpCopied%22%3A%22LAN%20IP%20Copied%22%2C%22continueToUnraid%22%3A%22Continue%20to%20Unraid%22%2C%22description%22%3A%22Description%22%2C%22year%22%3A%22year%22%2C%22years%22%3A%22years%22%2C%22month%22%3A%22month%22%2C%22months%22%3A%22months%22%2C%22day%22%3A%22day%22%2C%22days%22%3A%22days%22%2C%22hour%22%3A%22hour%22%2C%22hours%22%3A%22hours%22%2C%22minute%22%3A%22minute%22%2C%22minutes%22%3A%22minutes%22%2C%22second%22%3A%22second%22%2C%22seconds%22%3A%22seconds%22%2C%22ago%22%3A%22ago%22%2C%22basicPlusPro%22%3A%7B%22heading%22%3A%22Thank%20you%20for%20choosing%20Unraid%20OS%20and%20Connect%21%22%2C%22message%22%3A%7B%22registered%22%3A%22Register%20for%20Connect%20by%20signing%20in%20to%20Unraid.net%22%2C%22upgradeEligible%22%3A%22To%20support%20more%20storage%20devices%20as%20your%20server%20grows%20click%20Upgrade%20Key%22%7D%7D%2C%22actions%22%3A%7B%22purchase%22%3A%22Purchase%20Key%22%2C%22upgrade%22%3A%22Upgrade%20Key%22%2C%22recover%22%3A%22Recover%20Key%22%2C%22replace%22%3A%22Replace%20Key%22%2C%22replaceIneligible%22%3A%22Replace%20Key%20Ineligible%22%2C%22extend%22%3A%22Extend%20Trial%22%2C%22startTrial%22%3A%22Start%20Trial%22%2C%22signOutUnraidNet%22%3A%22Sign%20Out%20of%20Unraid.net%22%2C%22redeemActivationCode%22%3A%22Redeem%20Activation%20Code%22%7D%2C%22upc%22%3A%7B%22avatarAlt%22%3A%22%7B0%7D%20Avatar%22%2C%22confirmClosure%22%3A%22Confirm%20closure%20then%20continue%20to%20webGUI%22%2C%22closeDropdown%22%3A%22Close%20dropdown%22%2C%22openDropdown%22%3A%22Open%20dropdown%22%2C%22pleaseConfirmClosureYouHaveOpenPopUp%22%3A%22Please%20confirm%20closure.%20You%20have%20an%20open%20pop-up.%22%2C%22trialHasExpiredSeeOptions%22%3A%22Trial%20has%20expired%20see%20options%20below%22%2C%22errorCertRequiresSignIn%22%3A%22Sign%20In%20before%20your%20Unraid.net%20SSL%20certificate%20expires%22%2C%22removeMyServersPlugin%22%3A%22Remove%20Connect%20plugin%22%2C%22continueUsingMyServers%22%3A%22Continue%20using%20Connect%22%2C%22confirmMyServersPluginRemoval%22%3A%22Confirm%20Connect%20plugin%20removal%22%2C%22removingMyServersPlugin%22%3A%22Removing%20Connect%20plugin%5Cu2026%22%2C%22enhanceYourExperienceWithMyServers%22%3A%22Enhance%20your%20experience%20with%20Connect%22%2C%22lanIpCopied%22%3A%22LAN%20IP%20Copied%22%2C%22installingMyServers%22%3A%22Installing%20Connect%20%28beta%29%22%2C%22updatePlugin%22%3A%22Update%20Plugin%22%2C%22updatingMyServers%22%3A%22Updating%20Connect%20%28beta%29%22%2C%22thankYouForInstallingMyServers%22%3A%22Thank%20you%20installing%20Connect%21%22%2C%22connectYourUnraidnetAccountToGetStarted%22%3A%22Connect%20your%20Unraid.net%20account%20to%20get%20started%22%2C%22noRemoteApikeyRegisteredWithPlg%22%3A%7B%22heading%22%3A%22Connect%20Error%22%2C%22msg%22%3A%22Unraid.net%20re-authentication%20required%22%7D%2C%22errorTooManyDisks%22%3A%7B%22heading%22%3A%22Too%20many%20devices%22%2C%22msg%22%3A%7B%22base%22%3A%22You%20must%20upgrade%20your%20key%20to%20support%20more%20devices.%22%2C%22basic%22%3A%22Your%20Basic%20key%20supports%206%20devices.%22%2C%22plus%22%3A%22Your%20Plus%20key%20supports%2012%20devices.%22%7D%7D%2C%22extraLinks%22%3A%7B%22newTab%22%3A%22Opens%20%7B0%7D%20in%20new%20tab%22%2C%22myServers%22%3A%22Go%20to%20Connect%22%2C%22forums%22%3A%22Unraid%20Forums%22%2C%22settings%22%3A%7B%22text%22%3A%22Settings%22%2C%22title%22%3A%22Settings%20%3E%20Management%20Access%20%5Cu2022%20Unraid.net%22%7D%7D%2C%22meta%22%3A%7B%22trial%22%3A%7B%22active%22%3A%7B%22date%22%3A%22Trial%20key%20expires%20at%20%7Bdate%7D%22%2C%22timeDiff%22%3A%22Trial%20expires%20in%20%7BtimeDiff%7D%22%7D%2C%22expired%22%3A%7B%22date%22%3A%22Trial%20key%20expired%20at%20%7Bdate%7D%22%2C%22timeDiff%22%3A%22Trial%20expired%20%7BtimeDiff%7D%22%7D%7D%2C%22uptime%22%3A%7B%22date%22%3A%22Server%20up%20since%20%7Bdate%7D%22%2C%22readable%22%3A%22Uptime%20%7BtimeDiff%7D%22%7D%7D%2C%22myServers%22%3A%7B%22heading%22%3A%22Connect%22%2C%22beta%22%3A%22beta%22%2C%22restarting%22%3A%22Restarting%5Cu2026%22%2C%22errors%22%3A%7B%22unraidApi%22%3A%7B%22heading%22%3A%22Unraid%20API%20Error%22%2C%22message%22%3A%22Failed%20to%20connect%20to%20Unraid%20API%22%7D%2C%22myServers%22%3A%7B%22heading%22%3A%22Connect%20Error%22%2C%22message%22%3A%22Please%20wait%20a%20moment%20and%20reload%20the%20page%22%7D%7D%2C%22closeDetails%22%3A%22Close%20Details%22%2C%22loading%22%3A%22Loading%20Connect%20data%22%2C%22displayingLastKnown%22%3A%22Displaying%20last%20known%20server%20data%22%2C%22mothership%22%3A%7B%22connected%22%3A%22Connected%22%2C%22notConnected%22%3A%22Disconnected%22%7D%2C%22accessLabels%22%3A%7B%22current%22%3A%22Current%20server%22%2C%22local%22%3A%22Local%20access%22%2C%22offline%22%3A%22Server%20Offline%22%2C%22remote%22%3A%22Remote%20access%22%2C%22unavailable%22%3A%22Access%20unavailable%22%7D%2C%22api%22%3A%7B%22start%22%3A%22Restart%20unraid-api%22%2C%22startTitle%22%3A%22Executes%20%60unraid-api%20start%60%3B%20no%20terminal%20needed%22%2C%22stop%22%3A%22Stop%20unraid-api%22%7D%7D%2C%22opensNewHttpsWindow%22%3A%7B%22base%22%3A%22Opens%20new%20HTTPS%20window%20to%20%7B0%7D%22%2C%22signIn%22%3A%22Opens%20new%20HTTPS%20window%20to%20Sign%20In%22%2C%22signOut%22%3A%22Opens%20new%20HTTPS%20window%20to%20Sign%20Out%22%2C%22purchase%22%3A%22Opens%20new%20HTTPS%20window%20to%20Purchase%20Key%22%2C%22upgrade%22%3A%22Opens%20new%20HTTPS%20window%20to%20Upgrade%20Key%22%7D%2C%22signInActions%22%3A%7B%22resolve%22%3A%22Sign%20In%20to%20resolve%22%2C%22purchaseKey%22%3A%22Sign%20In%20to%20Purchase%20Key%22%2C%22purchaseKeyOrExtendTrial%22%3A%22%40%3Aupc.signInActions.purchaseKey%20or%20%40%3Aactions.extend%22%7D%7D%2C%22stateData%22%3A%7B%22ENOKEYFILE%22%3A%7B%22humanReadable%22%3A%22No%20Keyfile%22%2C%22heading%22%3A%22Let%26apos%3Bs%20unleash%20your%20hardware%21%22%2C%22message%22%3A%22%3Cp%3EYour%20server%20will%20not%20be%20usable%20until%20you%20purchase%20a%20Registration%20key%20or%20install%20a%20free%2030-day%20Trial%20key.%20A%20Trial%20key%20provides%20all%20the%20functionality%20of%20a%20Pro%20Registration%20key.%3C%2Fp%3E%3Cp%3ERegistration%20keys%20are%20bound%20to%20your%20USB%20Flash%20boot%20device%20serial%20number%20%28GUID%29.%20Please%20use%20a%20high%20quality%20name%20brand%20device%20at%20least%201GB%20in%20size%20%28min%204GB%20recommended%29.%3C%2Fp%3E%3Cp%3ENote%3A%20USB%20memory%20card%20readers%20are%20generally%20not%20supported%20because%20most%20do%20not%20present%20unique%20serial%20numbers.%3C%2Fp%3E%22%7D%2C%22TRIAL%22%3A%7B%22humanReadable%22%3A%22Trial%22%2C%22heading%22%3A%22Thank%20you%20for%20choosing%20Unraid%20OS%21%22%2C%22message%22%3A%22Your%20Trial%20key%20includes%20all%20the%20functionality%20and%20device%20support%20of%20a%20Pro%20key.%20After%20your%20Trial%20has%20reached%20expiration%20your%20server%20still%20functions%20normally%20until%20the%20next%20time%20you%20Stop%20the%20array%20or%20reboot%20your%20server.%20At%20that%20point%20you%20may%20either%20purchase%20a%20license%20key%20or%20request%20a%20Trial%20extension.%22%2C%22_extraMsg%22%3A%22You%20have%20%7BparsedExpireTime%7D%20remaining%20on%20your%20Trial%20key%22%7D%2C%22EEXPIRED%22%3A%7B%22humanReadable%22%3A%22Trial%20Expired%22%2C%22heading%22%3A%22Your%20Trial%20has%20expired%22%2C%22message%22%3A%7B%22base%22%3A%22To%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%20%22%2C%22extensionNotEligible%22%3A%22You%20have%20used%20all%20your%20Trial%20extensions.%20%40%3AstateData.EEXPIRED.message.base%22%2C%22extensionEligible%22%3A%22%40%3AstateData.EEXPIRED.message.base%20Alternately%2C%20you%20may%20request%20a%20Trial%20extension.%22%7D%7D%2C%22BASIC%22%3A%7B%22humanReadable%22%3A%22Basic%22%7D%2C%22PLUS%22%3A%7B%22humanReadable%22%3A%22Plus%22%7D%2C%22PRO%22%3A%7B%22humanReadable%22%3A%22Pro%22%7D%2C%22EGUID%22%3A%7B%22humanReadable%22%3A%22GUID%20Error%22%2C%22error%22%3A%7B%22heading%22%3A%22Registration%20key%20%2F%20GUID%20mismatch%22%2C%22message%22%3A%7B%22default%22%3A%22The%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%3Ci%3E%2Fconfig%3C%2Fi%3E%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key.%22%2C%22replacementIneligible%22%3A%22Your%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%22%2C%22replacementEligible%22%3A%22The%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%3Ci%3E%2Fconfig%3C%2Fi%3E%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key%20or%20Replace%20Key.%22%2C%22blacklisted%22%3A%22Your%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20is%20blacklisted.%22%7D%7D%7D%2C%22ENOKEYFILE2%22%3A%7B%22humanReadable%22%3A%22Missing%20key%20file%22%2C%22error%22%3A%7B%22heading%22%3A%22%40%3AstateData.ENOKEYFILE2.humanReadable%22%2C%22message%22%3A%22It%20appears%20that%20your%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%3Ci%3E%2Fconfig%3C%2Fi%3E%20directory%20on%20your%20USB%20Flash%20boot%20device.%20If%20you%20do%20not%20have%20a%20backup%20copy%20of%20your%20license%20key%20file%20you%20may%20install%20the%20Connect%20%28beta%29%20plugin%20to%20attempt%20to%20recover%20your%20key.%20If%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%22%7D%7D%2C%22ETRIAL%22%3A%7B%22humanReadable%22%3A%22Invalid%20installation%22%2C%22error%22%3A%7B%22heading%22%3A%22%40%3AstateData.ETRIAL.humanReadable%22%2C%22message%22%3A%22It%20is%20not%20possible%20to%20use%20a%20Trial%20key%20with%20an%20existing%20Unraid%20OS%20installation.%20You%20may%20purchase%20a%20license%20key%20corresponding%20to%20this%20USB%20Flash%20device%20to%20continue%20using%20this%20installation.%22%7D%7D%2C%22ENOKEYFILE1%22%3A%7B%22humanReadable%22%3A%22No%20Keyfile%22%2C%22error%22%3A%7B%22heading%22%3A%22No%20USB%20flash%20configuration%20data%22%2C%22message%22%3A%22There%20is%20a%20problem%20with%20your%20USB%20Flash%20device%22%7D%7D%2C%22ENOFLASH%22%3A%7B%22humanReadable%22%3A%22No%20Flash%22%2C%22error%22%3A%7B%22heading%22%3A%22Cannot%20access%20your%20USB%20Flash%20boot%20device%22%2C%22message%22%3A%22There%20is%20a%20physical%20problem%20accessing%20your%20USB%20Flash%20boot%20device%22%7D%7D%2C%22EGUID1%22%3A%7B%22humanReadable%22%3A%22Multiple%20License%20Keys%20Present%22%2C%22error%22%3A%7B%22heading%22%3A%22%40%3AstateData.EGUID1.humanReadable%22%2C%22message%22%3A%22There%20are%20multiple%20license%20key%20files%20present%20on%20your%20USB%20flash%20device%20and%20none%20of%20them%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20remove%20all%20key%20files%20except%20the%20one%20you%20want%20to%20replace%20from%20the%20%3Ci%3E%2Fconfig%3C%2Fi%3E%20directory%20on%20your%20USB%20Flash%20boot%20device.%20Alternately%20you%20may%20purchase%20a%20license%20key%20for%20this%20USB%20flash%20device.%20If%20you%20want%20to%20replace%20one%20of%20your%20license%20keys%20with%20a%20new%20key%20bound%20to%20this%20USB%20Flash%20device%20please%20first%20remove%20all%20other%20key%20files%20first.%22%7D%7D%2C%22EBLACKLISTED%22%3A%7B%22humanReadable%22%3A%22BLACKLISTED%22%2C%22error%22%3A%7B%22heading%22%3A%22Blacklisted%20USB%20Flash%20GUID%22%2C%22message%22%3A%22This%20USB%20Flash%20boot%20device%20has%20been%20blacklisted.%20This%20can%20occur%20as%20a%20result%20of%20transferring%20your%20license%20key%20to%20a%20replacement%20USB%20Flash%20device%2C%20and%20you%20are%20currently%20booted%20from%20your%20old%20USB%20Flash%20device.%20A%20USB%20Flash%20device%20may%20also%20be%20blacklisted%20if%20we%20discover%20the%20serial%20number%20is%20not%20unique%20%5Cu2013%20this%20is%20common%20with%20USB%20card%20readers.%22%7D%7D%2C%22EBLACKLISTED1%22%3A%7B%22humanReadable%22%3A%22%40%3AstateData.EBLACKLISTED.humanReadable%22%2C%22error%22%3A%7B%22heading%22%3A%22USB%20Flash%20device%20error%22%2C%22message%22%3A%22This%20USB%20Flash%20device%20has%20an%20invalid%20GUID.%20Please%20try%20a%20different%20USB%20Flash%20device.%22%7D%7D%2C%22EBLACKLISTED2%22%3A%7B%22humanReadable%22%3A%22%40%3AstateData.EBLACKLISTED.humanReadable%22%2C%22error%22%3A%7B%22heading%22%3A%22USB%20Flash%20has%20no%20serial%20number%22%2C%22message%22%3A%22%40%3AstateData.EBLACKLISTED.error.message%22%7D%7D%2C%22ENOCONN%22%3A%7B%22humanReadable%22%3A%22Trial%20Requires%20Internet%20Connection%22%2C%22error%22%3A%7B%22heading%22%3A%22Cannot%20validate%20Unraid%20Trial%20key%22%2C%22message%22%3A%22Your%20Trial%20key%20requires%20an%20internet%20connection.%20Please%20check%20Settings%20%3E%20Network.%22%7D%7D%2C%22STALE%22%3A%7B%22humanReadable%22%3A%22Stale%22%2C%22error%22%3A%7B%22heading%22%3A%22Stale%20Server%22%2C%22message%22%3A%22Please%20refresh%20the%20page%20to%20ensure%20you%20load%20your%20latest%20configuration%22%7D%7D%7D%2C%22regWizPopUp%22%3A%7B%22regWiz%22%3A%22Registration%20Wizard%22%2C%22toHome%22%3A%22To%20Registration%20Wizard%20Home%22%2C%22continueTrial%22%3A%22Continue%20Trial%22%2C%22serverInfoToggle%22%3A%22Toggle%20server%20info%20visibility%22%2C%22youCanSafelyCloseThisWindow%22%3A%22You%20can%20safely%20close%20this%20window%22%2C%22automaticallyClosingIn%22%3A%22Auto%20closing%20in%20%7B0%7D%22%2C%22byeBye%22%3A%22bye%20bye%20%5Cud83d%5Cudc4b%22%2C%22browserWillSelfDestructIn%22%3A%22Browser%20will%20self%20destruct%20in%20%7B0%7D%22%2C%22closingPopUpMayLeadToErrors%22%3A%22Closing%20this%20pop-up%20window%20while%20actions%20are%20being%20preformed%20may%20lead%20to%20unintended%20errors%22%2C%22goBack%22%3A%22Go%20Back%22%2C%22shutDown%22%3A%22Shut%20Down%22%2C%22haveAccountSignIn%22%3A%22Already%20have%20an%20account%3F%20Sign%20In%22%2C%22noAccountSignUp%22%3A%22Do%20not%20have%20an%20account%3F%20Sign%20Up%22%2C%22willConnectYourServerToMyServers%22%3A%22This%20will%20register%20your%20server%20with%20Connect%20%3Csup%3EBETA%3C%2Fsup%3E%22%2C%22serverInfo%22%3A%7B%22flash%22%3A%22Flash%22%2C%22product%22%3A%22Product%22%2C%22GUID%22%3A%22GUID%22%2C%22name%22%3A%22Name%22%2C%22ip%22%3A%22IP%22%7D%2C%22forms%22%3A%7B%22displayName%22%3A%22Display%20Name%22%2C%22emailAddress%22%3A%22Email%20Address%22%2C%22displayNameOrEmailAddress%22%3A%22Display%20Name%20or%20Email%20Address%22%2C%22displayNameRootMessage%22%3A%22Use%20your%20Unraid.net%20credentials%2C%20not%20your%20local%20server%20credentials%22%2C%22honeyPotCopy%22%3A%22If%20you%20fill%20this%20field%20out%20then%20your%20email%20will%20not%20be%20sent%22%2C%22fieldRequired%22%3A%22This%20field%20is%20required%22%2C%22submit%22%3A%22Submit%22%2C%22submitting%22%3A%22Submitting%22%2C%22notValid%22%3A%22Form%20not%20valid%22%2C%22cancel%22%3A%22Cancel%22%2C%22confirm%22%3A%22Confirm%22%2C%22createMyAccount%22%3A%22Create%20My%20Account%22%2C%22subject%22%3A%22Subject%22%2C%22password%22%3A%22Password%22%2C%22togglePasswordVisibility%22%3A%22Toggle%20Password%20Visibility%22%2C%22message%22%3A%22Message%22%2C%22confirmPassword%22%3A%22Confirm%20Password%22%2C%22passwordMustMatch%22%3A%22Password%20confirmation%20must%20match%22%2C%22passwordMinimum%22%3A%228%20or%20more%20characters%22%2C%22comments%22%3A%22comments%22%2C%22newsletterCopy%22%3A%22Sign%20me%20up%20for%20the%20monthly%20Unraid%20newsletter%3A%20a%20digest%20of%20recent%20blog%20posts%2C%20community%20videos%2C%20popular%20forum%20threads%2C%20product%20announcements%2C%20and%20more%22%2C%22terms%22%3A%7B%22iAgree%22%3A%22I%20agree%20to%20the%22%2C%22text%22%3A%22Terms%20of%20Use%22%7D%7D%2C%22routes%22%3A%7B%22extendTrial%22%3A%7B%22heading%22%3A%7B%22loading%22%3A%22Extending%20Trial%22%2C%22error%22%3A%22Trial%20Extension%20Failed%22%7D%2C%22message%22%3A%22Not%20ready%20to%20purchase%3F%3Cbr%3EReceive%20an%20additional%2015%20days%20for%20your%20trial.%22%7D%2C%22forgotPassword%22%3A%7B%22heading%22%3A%22Forgot%20Password%22%2C%22subheading%22%3A%22After%20resetting%20your%20password%20come%20back%20to%20the%20Registration%20Wizard%20pop-up%20window%20to%20Sign%20In%20and%20complete%20your%20server%26apos%3Bs%20registration%22%2C%22resetPasswordNow%22%3A%22Reset%20Password%20Now%22%2C%22backToSignIn%22%3A%22Back%20to%20Sign%20In%22%7D%2C%22signIn%22%3A%7B%22heading%22%3A%7B%22signIn%22%3A%22Unraid.net%20Sign%20In%22%2C%22recover%22%3A%22Unraid.net%20Sign%20In%20to%20Recover%20Key%22%2C%22replace%22%3A%22Unraid.net%20Sign%20In%20to%20Replace%20Key%22%7D%2C%22form%22%3A%7B%22replacementConditions%22%3A%7B%22name%22%3A%22Acknowledge%20Replacement%20Conditions%22%2C%22label%22%3A%22I%20acknowledge%20that%20replacing%20a%20license%20key%20results%20in%20permanently%20blacklisting%20the%20previous%20USB%20Flash%20GUID%22%7D%2C%22label%22%3A%7B%22password%22%3A%7B%22replace%22%3A%22Unraid.net%20account%20password%22%7D%7D%7D%7D%2C%22signUp%22%3A%7B%22heading%22%3A%22Create%20Unraid.net%20Account%22%7D%2C%22signOut%22%3A%7B%22heading%22%3A%22Unraid.net%20Sign%20Out%22%2C%22warnings%22%3A%7B%22remoteAccessDisabled%22%3A%22Remote%20access%20will%20be%20disabled%22%2C%22remoteAccessInaccessible%22%3A%22You%20will%20no%20longer%20have%20access%20to%20this%20server%20using%20%3Cabbr%20title%3D%5C%22%7B0%7D%5C%22%20class%3D%5C%22italic%5C%22%3Ethis%20url%3C%2Fabbr%3E%22%2C%22disablingFlashBackup%22%3A%22Automated%20flash%20backups%20will%20be%20disabled%20until%20you%20sign%20in%20again%22%2C%22downloadFlashBackup%22%3A%22Download%20latest%20backup%20from%20Connect%20Dashboard%20before%20signing%20out%22%7D%7D%2C%22success%22%3A%7B%22heading%22%3A%7B%22username%22%3A%22Hi%20%7B0%7D%22%2C%22default%22%3A%22Success%22%7D%2C%22subheading%22%3A%7B%22extention%22%3A%22Your%20trial%20will%20expire%20in%2015%20days%22%2C%22newTrial%22%3A%22Your%20trial%20will%20expire%20in%2030%20days%22%7D%2C%22signIn%22%3A%7B%22tileTitle%22%3A%7B%22actionFail%22%3A%22%7B0%7D%20was%20not%20signed%20in%20to%20your%20Unraid.net%20account%22%2C%22actionSuccess%22%3A%22%7B0%7D%20is%20signed%20in%20to%20your%20Unraid.net%20account%22%2C%22loading%22%3A%22Signing%20in%20%7B0%7D%20to%20Unraid.net%20account%22%7D%7D%2C%22signOut%22%3A%7B%22tileTitle%22%3A%7B%22actionFail%22%3A%22%7B0%7D%20was%20not%20signed%20out%20of%20your%20Unraid.net%20account%22%2C%22actionSuccess%22%3A%22%7B0%7D%20was%20signed%20out%20of%20your%20Unraid.net%20account%22%2C%22loading%22%3A%22Signing%20out%20%7B0%7D%20from%20Unraid.net%20account%22%7D%7D%2C%22keys%22%3A%7B%22trial%22%3A%22Trial%22%2C%22basic%22%3A%22Basic%22%2C%22plus%22%3A%22Plus%22%2C%22pro%22%3A%22Pro%22%7D%2C%22extended%22%3A%22%7B0%7D%20Key%20Extended%22%2C%22recovered%22%3A%22%7B0%7D%20Key%20Recovered%22%2C%22replaced%22%3A%22%7B0%7D%20Key%20Replaced%22%2C%22created%22%3A%22%7B0%7D%20Key%20Created%22%2C%22install%22%3A%7B%22loading%22%3A%22Installing%20%7B0%7D%20Key%22%2C%22error%22%3A%22%7B0%7D%20Key%20Install%20Error%22%2C%22success%22%3A%22Installed%20%7B0%7D%20Key%22%2C%22manualInstructions%22%3A%22To%20manually%20install%20the%20key%20paste%20the%20key%20file%20url%20into%20the%20Key%20file%20URL%20field%20on%20the%20webGUI%20Tools%20%3E%20Registration%20page%20and%20then%20click%20Install%20Key.%22%2C%22copyFail%22%3A%22Unable%20to%20copy%22%2C%22copySuccess%22%3A%22Copied%20key%20url%21%22%2C%22copyButton%22%3A%22Copy%20Key%20URL%22%2C%22copyBeforeClose%22%3A%22Please%20copy%20the%20Key%20URL%20before%20closing%20this%20window%22%7D%2C%22timeout%22%3A%22Communication%20with%20%7B0%7D%20has%20timed%20out%22%2C%22loading1%22%3A%22Please%20keep%20this%20window%20open%22%2C%22loading2%22%3A%22Still%20working%20our%20magic%22%2C%22countdown%22%3A%7B%22success%22%3A%7B%22prefix%22%3A%22Auto%20closing%20in%20%7B0%7D%22%2C%22text%22%3A%22You%20can%20safely%20close%20this%20window%22%7D%2C%22error%22%3A%7B%22prefix%22%3A%22Auto%20redirecting%20in%20%7B0%7D%22%2C%22text%22%3A%22Back%20to%20Registration%20Home%22%2C%22complete%22%3A%22Back%20in%20a%20flash%20%5Cu26a1%5Cufe0f%22%7D%7D%7D%2C%22troubleshoot%22%3A%7B%22heading%22%3A%7B%22default%22%3A%22Troubleshoot%22%2C%22success%22%3A%22Thank%20you%20for%20contacting%20Unraid%22%7D%2C%22subheading%22%3A%7B%22default%22%3A%22Forgot%20what%20Unraid.net%20account%20you%20used%3F%20Have%20a%20USB%20flash%20device%20that%20already%20has%20an%20account%20associated%20with%20it%3F%20Just%20give%20us%20the%20details%20about%20what%20happened%20and%20we%26apos%3Bll%20do%20our%20best%20to%20get%20you%20up%20and%20running%20again.%22%2C%22success%22%3A%22We%20have%20received%20your%20e-mail%20and%20will%20respond%20in%20the%20order%20it%20was%20received.%20While%20we%20strive%20to%20respond%20to%20all%20requests%20as%20quickly%20as%20possible%20please%20allow%20for%20up%20to%203%20business%20days%20for%20a%20response.%22%7D%2C%22relevantServerData%22%3A%22Your%20USB%20Flash%20GUID%20and%20other%20relevant%20server%20data%20will%20also%20be%20sent%22%7D%2C%22verifyEmail%22%3A%7B%22heading%22%3A%22Verify%20Email%22%2C%22subheading%22%3A%22We%20have%20sent%20a%20verifcation%20email%20to%20%7B0%7D%22%2C%22form%22%3A%7B%22verificationCode%22%3A%22verification%20code%22%2C%22verifyCode%22%3A%22Paste%20or%20Enter%20code%22%7D%2C%22noCode%22%3A%22Didn%26apos%3Bt%20get%20code%3F%22%7D%2C%22verifyEmailResend%22%3A%7B%22heading%22%3A%22Resend%20Email%20Verification%20Code%22%2C%22goBack%22%3A%22Have%20the%20code%20now%3F%20Go%20Back%22%2C%22resend%22%3A%22Resend%20Code%22%7D%2C%22whatIsMyServers%22%3A%7B%22heading%22%3A%22What%20is%20Unraid.net%3F%22%2C%22subheading%22%3A%22Expand%20your%20servers%20capabilities%22%2C%22copy%22%3A%22With%20an%20Unraid.net%20account%20you%20can%20start%20using%20Connect%20%28beta%29%20which%20gives%20you%20access%20to%20the%20following%20features%3A%22%2C%22features%22%3A%7B%22dynamicRemoteAccess%22%3A%7B%22heading%22%3A%22Dynamic%20Remote%20Access%22%2C%22copy%22%3A%22Toggle%20on%2Foff%20server%20accessibility%20with%20dynamic%20remote%20access.%20Automatically%20turn%20on%20UPnP%20and%20open%20a%20random%20WAN%20port%20on%20your%20router%20at%20the%20click%20of%20a%20button%20and%20close%20off%20access%20in%20seconds.%22%7D%2C%22manageWithinConnect%22%3A%7B%22heading%22%3A%22Manage%20Your%20Server%20Within%20Connect%22%2C%22copy%22%3A%22Servers%20equipped%20with%20a%20myunraid.net%20certificate%20can%20be%20managed%20directly%20from%20within%20the%20Connect%20web%20UI.%20Manage%20multiple%20servers%20from%20your%20phone%2C%20tablet%2C%20laptop%2C%20or%20PC%20in%20the%20same%20browser%20window.%22%7D%2C%22deepLinking%22%3A%7B%22heading%22%3A%22Deep%20Linking%22%2C%22copy%22%3A%22The%20Connect%20dashboard%20links%20to%20relevant%20sections%20of%20the%20webgui%2C%20allowing%20quick%20access%20to%20those%20settings%20and%20server%20sections.%22%7D%2C%22onlineFlashBackup%22%3A%7B%22heading%22%3A%22Online%20Flash%20Backup%22%2C%22copy%22%3A%22Never%20ever%20be%20left%20without%20a%20backup%20of%20your%20config.%20If%20you%20need%20to%20change%20flash%20drives%2C%20generate%20a%20backup%20from%20Connect%20and%20be%20up%20and%20running%20in%20minutes.%22%7D%2C%22realTimeMonitoring%22%3A%7B%22heading%22%3A%22Real-time%20Monitoring%22%2C%22copy%22%3A%22Get%20an%20overview%20of%20your%20server%26apos%3Bs%20state%2C%20storage%20space%2C%20apps%20and%20VMs%20status%2C%20and%20more.%22%7D%2C%22customizableDashboardTitles%22%3A%7B%22heading%22%3A%22Customizable%20Dashboard%20Tiles%22%2C%22copy%22%3A%22Set%20custom%20server%20tiles%20how%20you%20like%20and%20automatically%20display%20your%20server%26apos%3Bs%20banner%20image%20on%20your%20Connect%20Dashboard.%22%7D%2C%22licenseManagement%22%3A%7B%22heading%22%3A%22License%20Management%22%2C%22copy%22%3A%22Manage%20your%20license%20keys%20at%20any%20time%20via%20the%20My%20Keys%20section.%22%7D%2C%22plusMore%22%3A%7B%22heading%22%3A%22Plus%20more%20on%20the%20way%22%2C%22copy%22%3A%22All%20you%20need%20is%20an%20active%20internet%20connection%2C%20an%20Unraid.net%20account%2C%20and%20the%20Connect%20plugin.%20Get%20started%20by%20installing%20the%20plugin.%22%7D%7D%7D%2C%22replaceKey%22%3A%7B%22subheading%22%3A%7B%22registered%22%3A%22A%20record%20of%20your%20replacement%20will%20be%20sent%20to%20your%20Unraid.net%20account%20email%20address%22%2C%22notRegistered%22%3A%22A%20record%20of%20your%20replacement%20will%20be%20sent%20to%20this%20email%22%7D%7D%2C%22notFound%22%3A%7B%22subheading%22%3A%22Page%20Not%20Found%22%7D%2C%22notAllowed%22%3A%7B%22subheading%22%3A%22Page%20Not%20Allowed%22%7D%7D%7D%2C%22wanIpCheck%22%3A%7B%22checking%22%3A%22Checking%20Wan%20IPs%22%2C%22match%22%3A%22Remark%3A%20your%20WAN%20IPv4%20is%20%3Cb%3E%7B0%7D%3C%2Fb%3E%22%2C%22mismatch%22%3A%22Remark%3A%20Unraid%26apos%3Bs%20WAN%20IPv4%20%3Cb%3E%7B0%7D%3C%2Fb%3E%20does%20not%20match%20your%20client%26apos%3Bs%20WAN%20IPv4%20%3Cb%3E%7B1%7D%3C%2Fb%3E.%20This%20may%20indicate%20a%20complex%20network%20that%20will%20not%20work%20with%20this%20Remote%20Access%20solution.%20Ignore%20this%20message%20if%20you%20are%20currently%20connected%20via%20Remote%20Access%20or%20VPN.%22%2C%22resolveError%22%3A%22DNS%20issue%2C%20unable%20to%20resolve%20wanip4.unraid.net%22%7D%2C%22upcTrigger%22%3A%7B%22upgrade%22%3A%22To%20support%20more%20storage%20devices%20as%20your%20server%20grows%20click%20the%20%3Ci%3EOpen%20Dropdown%3C%2Fi%3E%20button.%22%2C%22default%22%3A%22Key%20management%20is%20done%20via%20the%20dropdown%20in%20the%20top%20right%20of%20the%20webGUI%20on%20every%20page.%22%2C%22open%22%3A%22Open%20Dropdown%22%7D%2C%22yargYePirate%22%3A%22Oh%20no%21%20Are%20you%20pirating%20Unraid%20OS%3F%3Cbr%3EAre%20you%20ready%20to%20buy%20a%20real%20license%3F%22%2C%22keyFileNotValid%22%3A%22Key%20file%20not%20valid%22%2C%22installFailed%22%3A%7B%22heading%22%3A%22Connect%20plugin%20install%20failed%22%2C%22message%22%3A%22The%20Connect%20plugin%20install%20is%20incomplete.%20Please%20uninstall%20and%20reinstall%20the%20Connect%20plugin.%20Be%20sure%20to%20let%20the%20install%20complete%20before%20you%20close%20the%20window.%22%7D%2C%22downloadUnraidApiLogs%22%3A%22Download%20unraid-api%20Logs%22%2C%22download%22%3A%22Download%22%2C%22pleaseWait%22%3A%22Please%20wait%5Cu2026%22%7D%7D"
@@ -601,11 +601,11 @@ function upcEnv(str, reload = true, session = false) { // overwrite upc src
   reg-wiz-time=""
   serverdesc="Media server"
   servermodel="Custom"
-  serverstate="%7B%22avatar%22%3A%22%22%2C%22config%22%3A%7B%22valid%22%3Atrue%2C%22error%22%3Anull%7D%2C%22deviceCount%22%3A%222%22%2C%22email%22%3A%22%22%2C%22extraOrigins%22%3A%5B%22%22%5D%2C%22flashproduct%22%3A%22DataTraveler_3.0%22%2C%22flashvendor%22%3A%22Kingston%22%2C%22flashBackupActivated%22%3A%22%22%2C%22guid%22%3A%220930-6545-8DAF-E350C0002D93%22%2C%22hasRemoteApikey%22%3Afalse%2C%22internalip%22%3A%2210.0.0.210%22%2C%22internalport%22%3A%2280%22%2C%22keyfile%22%3A%22mcPuMULqQJhIif7kb6dpQ0qmUN053M7XTEeci__00NM5JueVdJkrQ6MgNjKIL84BxFdiRTNqouKDXZeihR5bVkAmf_fmnCJLeEpBosi8RjkF0VeUja7yMu5Pmc2dZREPSXlG-jKbFQJLvhRo7-Qb201aOn4oVRw_yuWZvplsA5wKT3DP4NNNfJr2fdq3XWXSdfElxOYlIu-kHNMuKLAO0ojnls3qjGuovYq2LQIf1SRHNcb6DQh3szizyS3yZiK1APMG8crMCW5Hx31lt0GhuuxhPx_KvC5EGLKcSCs0RNzgj2J52hQUWlG7SyFn3XtidMrTuaM2Y8pPEpSNMN359A%22%2C%22osVersion%22%3A%226.12.3%22%2C%22plgVersion%22%3A%22base-6.12.3%22%2C%22plgInstalled%22%3A%22%22%2C%22protocol%22%3A%22http%22%2C%22reggen%22%3A0%2C%22regGuid%22%3A%220930-6545-8DAF-E350C0002D93%22%2C%22registered%22%3Afalse%2C%22servername%22%3A%22Tower%22%2C%22site%22%3A%22http%3A%2F%2F10.0.0.210%22%2C%22state%22%3A%22TRIAL%22%2C%22ts%22%3A1690114347%2C%22username%22%3A%22%22%2C%22wanFQDN%22%3A%22%22%7D"
+  serverstate="%7B%22avatar%22%3A%22%22%2C%22config%22%3A%7B%22valid%22%3Atrue%2C%22error%22%3Anull%7D%2C%22deviceCount%22%3A%224%22%2C%22email%22%3A%22%22%2C%22extraOrigins%22%3A%5B%22%22%5D%2C%22flashproduct%22%3A%22DataTraveler_3.0%22%2C%22flashvendor%22%3A%22Kingston%22%2C%22flashBackupActivated%22%3A%22%22%2C%22guid%22%3A%220951-1666-DBDE-E751087604C8%22%2C%22hasRemoteApikey%22%3Afalse%2C%22internalip%22%3A%2210.0.0.63%22%2C%22internalport%22%3A%2280%22%2C%22keyfile%22%3A%22s764LKmBOI8tKQSQXvd8LYCgY6kHMK2vZT9yzDYWXp9BxOdZoH33m5XdgMVpJ1cv1x1gOq2sXAahyEUcHxKSJTdHbNLSWbaghzAKUHTc1seUccEfZEmo8HFhHnj655-I9MBIkBxbPpxCxuLh-MmrpcTiNjCJcusDsuDCRuP4WQ-zAAlJYfxkIMDRrLn2QG3_qyVllJmoaQK1rTnaM06i-_p11InVjpXYU6-4GazFzl2R3Y5sNTyjOL4E3zjidlvVZZ1OsrDVyD5QzvfYrCDgs7DX1KzAq5RI5na0zdgoN2x6r0yeeGGZMZwrwT18MTqfrmXkb-_0FAKmHoxJU6Aoig%22%2C%22osVersion%22%3A%226.12.3%22%2C%22plgVersion%22%3A%22base-6.12.3%22%2C%22plgInstalled%22%3A%22%22%2C%22protocol%22%3A%22http%22%2C%22reggen%22%3A0%2C%22regGuid%22%3A%220951-1666-DBDE-E751087604C8%22%2C%22registered%22%3Afalse%2C%22servername%22%3A%22UNRAIDVM%22%2C%22site%22%3A%22http%3A%2F%2F10.0.0.63%22%2C%22state%22%3A%22BASIC%22%2C%22ts%22%3A1691598551%2C%22username%22%3A%22%22%2C%22wanFQDN%22%3A%22%22%7D"
   show-banner-gradient="yes"
   textcolor=""
   theme="white"
-  uptime="1689945334000"
+  uptime="1691597320000"
   ></unraid-user-profile>
 <!-- /myservers2 -->
   </div>
@@ -899,16 +899,16 @@ input[type=checkbox]{margin-left:0}
 <div class="formview">
 <input type="hidden" name="template[os]" id="template_os" value="linux">
 <input type="hidden" name="domain[persistent]" value="1">
-<input type="hidden" name="domain[uuid]" value="6d701965-a875-23b4-6a45-163dd2c40af5">
+<input type="hidden" name="domain[uuid]" value="c5825689-86ae-3de8-cb03-a875914c8803">
 <input type="hidden" name="domain[clock]" id="domain_clock" value="utc">
 <input type="hidden" name="domain[arch]" value="x86_64">
-<input type="hidden" name="domain[oldname]" id="domain_oldname" value="CorePlus">
+<input type="hidden" name="domain[oldname]" id="domain_oldname" value="Linux">
 <input type="hidden" name="domain[memoryBacking]" id="domain_memorybacking" value="{&quot;nosharepages&quot;:{}}">
 
 	<table>
 		<tr>
 			<td>Name:</td>
-			<td><input type="text" name="domain[name]" id="domain_name" class="textTemplate" title="Name of virtual machine" placeholder="e.g. My Workstation" value="CorePlus" required /></td>
+			<td><input type="text" name="domain[name]" id="domain_name" class="textTemplate" title="Name of virtual machine" placeholder="e.g. My Workstation" value="Linux" required /></td>
 		</tr>
 	</table>
 	<blockquote class="inline_help">
@@ -932,7 +932,7 @@ input[type=checkbox]{margin-left:0}
 			<td>CPU Mode:</td>
 			<td>
 				<select name="domain[cpumode]" title="define type of cpu presented to this vm">
-				<option value='host-passthrough' selected>Host Passthrough (Intel&#174; Celeron&#174;  J3455 @ 1.50GHz@)</option><option value='custom'>Emulated (QEMU64)</option>				</select>
+				<option value='host-passthrough' selected>Host Passthrough (pc-q35-7.1@)</option><option value='custom'>Emulated (QEMU64)</option>				</select>
 			</td>
 		</tr>
 	</table>
@@ -955,7 +955,7 @@ input[type=checkbox]{margin-left:0}
 			<td>Logical CPUs:</td>
 			<td>
 				<div class="textarea four">
-				<label for='vcpu0' class='checkbox'>cpu 0<input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu0' value='0' checked disabled><span class='checkmark'></span></label><label for='vcpu1' class='checkbox'>cpu 1<input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu1' value='1' ><span class='checkmark'></span></label><label for='vcpu2' class='checkbox'>cpu 2<input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu2' value='2' ><span class='checkmark'></span></label><label for='vcpu3' class='checkbox'>cpu 3<input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu3' value='3' ><span class='checkmark'></span></label>				</div>
+				<label for='vcpu0' class='cpu1 checkbox'>cpu 0 / 1<input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu0' value='0' ><span class='checkmark'></span></label><label for='vcpu1' class='cpu2 checkbox'><input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu1' value='1' ><span class='checkmark'></span></label><label for='vcpu2' class='cpu1 checkbox'>cpu 2 / 3<input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu2' value='2' ><span class='checkmark'></span></label><label for='vcpu3' class='cpu2 checkbox'><input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu3' value='3' checked disabled><span class='checkmark'></span></label>				</div>
 			</td>
 		</tr>
 	</table>
@@ -1141,7 +1141,7 @@ input[type=checkbox]{margin-left:0}
 				<td>vDisk Location:</td>
 				<td>
 					<select name="disk[0][select]" class="disk_select narrow">
-					<option value="">None</option><option value='auto' selected>Auto</option><option value='manual'>Manual</option>					</select><input type="text" name="disk[0][new]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfolders="true" data-pickfilter="img,qcow,qcow2" data-pickmatch="^[^.].*" data-pickroot="/mnt/" class="disk" id="disk_0" value="/mnt/user/domains/CorePlus/vdisk1.img" placeholder="Separate sub-folder and image will be created based on Name"><div class="disk_preview"></div>
+					<option value="">None</option><option value='auto' selected>Auto</option><option value='manual'>Manual</option>					</select><input type="text" name="disk[0][new]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfolders="true" data-pickfilter="img,qcow,qcow2" data-pickmatch="^[^.].*" data-pickroot="/mnt/" class="disk" id="disk_0" value="/mnt/user/domains/Linux/vdisk1.img" placeholder="Separate sub-folder and image will be created based on Name"><div class="disk_preview"></div>
 				</td>
 			</tr>
 
@@ -1226,7 +1226,7 @@ input[type=checkbox]{margin-left:0}
 				<td>vDisk Location:</td>
 				<td>
 					<select name="disk[{{INDEX}}][select]" class="disk_select narrow">
-					<option value='auto' selected>Auto</option><option value='cache'>cache - 59.8 GB free</option><option value='disk1'>Disk 1 - 5.77 GB free</option><option value='manual'>Manual</option>					</select><input type="text" name="disk[{{INDEX}}][new]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfolders="true" data-pickfilter="img,qcow,qcow2" data-pickmatch="^[^.].*" data-pickroot="/mnt/" class="disk" id="disk_{{INDEX}}" value="" placeholder="Separate sub-folder and image will be created based on Name"><div class="disk_preview"></div>
+					<option value='auto' selected>Auto</option><option value='cache'>cache - 30.6 GB free</option><option value='disk1'>Disk 1 - 53.2 GB free</option><option value='disk2'>Disk 2 - 53.2 GB free</option><option value='manual'>Manual</option>					</select><input type="text" name="disk[{{INDEX}}][new]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfolders="true" data-pickfilter="img,qcow,qcow2" data-pickmatch="^[^.].*" data-pickroot="/mnt/" class="disk" id="disk_{{INDEX}}" value="" placeholder="Separate sub-folder and image will be created based on Name"><div class="disk_preview"></div>
 				</td>
 			</tr>
 
@@ -1355,12 +1355,12 @@ input[type=checkbox]{margin-left:0}
 		</table>
 	</script>
 
-			<table data-category="Graphics_Card" data-multiple="true" data-minimum="1" data-maximum="2" data-index="0" data-prefix="">
+			<table data-category="Graphics_Card" data-multiple="true" data-minimum="1" data-maximum="1" data-index="0" data-prefix="">
 			<tr>
 				<td>Graphics Card:</td>
 				<td>
 					<select name="gpu[0][id]" class="gpu narrow">
-					<option value='virtual' selected>Virtual</option><option value='00:02.0'>Intel HD Graphics 500 (00:02.0)</option>					</select>
+					<option value='virtual' selected>Virtual</option>					</select>
 				</td>
 			</tr>
 
@@ -1468,7 +1468,7 @@ input[type=checkbox]{margin-left:0}
 				<td>Graphics Card:</td>
 				<td>
 					<select name="gpu[{{INDEX}}][id]" class="gpu narrow">
-					<option value='' selected>None</option><option value='00:02.0'>Intel HD Graphics 500 (00:02.0)</option>					</select>
+					<option value='' selected>None</option>					</select>
 				</td>
 			</tr>
 			<tr class="advanced romfile">
@@ -1480,12 +1480,12 @@ input[type=checkbox]{margin-left:0}
 		</table>
 	</script>
 
-			<table data-category="Sound_Card" data-multiple="true" data-minimum="1" data-maximum="1" data-index="0" data-prefix="">
+			<table data-category="Sound_Card" data-multiple="true" data-minimum="1" data-maximum="0" data-index="0" data-prefix="">
 			<tr>
 				<td>Sound Card:</td>
 				<td>
 					<select name="audio[0][id]" class="audio narrow">
-					<option value='' selected>None</option><option value='00:0e.0'>Intel Celeron N3350/Pentium N4200/Atom E3900 Series Audio Cluster (00:0e.0)</option>					</select>
+					<option value='' selected>None</option>					</select>
 				</td>
 			</tr>
 		</table>
@@ -1499,7 +1499,7 @@ input[type=checkbox]{margin-left:0}
 				<td>Sound Card:</td>
 				<td>
 					<select name="audio[{{INDEX}}][id]" class="audio narrow">
-					<option value='00:0e.0'>Intel Celeron N3350/Pentium N4200/Atom E3900 Series Audio Cluster (00:0e.0)</option>					</select>
+										</select>
 				</td>
 			</tr>
 		</table>
@@ -1509,7 +1509,7 @@ input[type=checkbox]{margin-left:0}
 			<tr class="advanced">
 				<td>Network MAC:</td>
 				<td>
-					<input type="text" name="nic[0][mac]" class="narrow" value="52:54:00:88:7a:0a" title="random mac, you can supply your own" /> <i class="fa fa-refresh mac_generate" title="re-generate random mac address"></i>
+					<input type="text" name="nic[0][mac]" class="narrow" value="52:54:00:a5:55:9f" title="random mac, you can supply your own" /> <i class="fa fa-refresh mac_generate" title="re-generate random mac address"></i>
 				</td>
 			</tr>
 			<tr class="advanced">
@@ -1593,12 +1593,9 @@ input[type=checkbox]{margin-left:0}
 			<td>USB Devices:</td>
 			<td>
 				<div class="textarea" style="width: 850px">
-										<label for="usb0">&nbsp&nbsp&nbsp&nbsp<input type="checkbox" name="usb[]" id="usb0" value="0951:1666" 						/> &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp <input type="checkbox" name="usbopt[0951:1666]" id="usbopt0" value="0951:1666" />&nbsp&nbsp&nbsp&nbsp&nbsp 
-						<input type="number" size="5" maxlength="5" id="usbboot0" class="narrow bootorder"   style="width: 50px;" name="usbboot[0951:1666]"   title="Boot order"  value="" >
-						Kingston Technology DataTraveler 100 G3/G4/SE9 G2/50 (0951:1666)</label><br/>
-												<label for="usb1">&nbsp&nbsp&nbsp&nbsp<input type="checkbox" name="usb[]" id="usb1" value="8087:0aa7" 						/> &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp <input type="checkbox" name="usbopt[8087:0aa7]" id="usbopt1" value="8087:0aa7" />&nbsp&nbsp&nbsp&nbsp&nbsp 
-						<input type="number" size="5" maxlength="5" id="usbboot1" class="narrow bootorder"   style="width: 50px;" name="usbboot[8087:0aa7]"   title="Boot order"  value="" >
-						Intel Corp. Wireless-AC 3168 Bluetooth (8087:0aa7)</label><br/>
+										<label for="usb0">&nbsp&nbsp&nbsp&nbsp<input type="checkbox" name="usb[]" id="usb0" value="0627:0001" 						/> &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp <input type="checkbox" name="usbopt[0627:0001]" id="usbopt0" value="0627:0001" />&nbsp&nbsp&nbsp&nbsp&nbsp 
+						<input type="number" size="5" maxlength="5" id="usbboot0" class="narrow bootorder"   style="width: 50px;" name="usbboot[0627:0001]"   title="Boot order"  value="" >
+						Adomax Technology Co. QEMU USB Tablet (0627:0001)</label><br/>
 										</div>
 			</td>
 		</tr>
@@ -1641,8 +1638,8 @@ input[type=checkbox]{margin-left:0}
 <div class="xmlview">
 	<textarea id="addcode" name="xmldesc" placeholder="Copy &amp; Paste Domain XML Configuration Here." autofocus>&lt;?xml version=&#039;1.0&#039; encoding=&#039;UTF-8&#039;?&gt;
 &lt;domain type=&#039;kvm&#039;&gt;
-  &lt;name&gt;CorePlus&lt;/name&gt;
-  &lt;uuid&gt;6d701965-a875-23b4-6a45-163dd2c40af5&lt;/uuid&gt;
+  &lt;name&gt;Linux&lt;/name&gt;
+  &lt;uuid&gt;c5825689-86ae-3de8-cb03-a875914c8803&lt;/uuid&gt;
   &lt;metadata&gt;
     &lt;vmtemplate xmlns=&quot;unraid&quot; name=&quot;Linux&quot; icon=&quot;linux.png&quot; os=&quot;linux&quot;/&gt;
   &lt;/metadata&gt;
@@ -1653,12 +1650,12 @@ input[type=checkbox]{margin-left:0}
   &lt;/memoryBacking&gt;
   &lt;vcpu placement=&#039;static&#039;&gt;1&lt;/vcpu&gt;
   &lt;cputune&gt;
-    &lt;vcpupin vcpu=&#039;0&#039; cpuset=&#039;0&#039;/&gt;
+    &lt;vcpupin vcpu=&#039;0&#039; cpuset=&#039;3&#039;/&gt;
   &lt;/cputune&gt;
   &lt;os&gt;
     &lt;type arch=&#039;x86_64&#039; machine=&#039;pc-q35-7.1&#039;&gt;hvm&lt;/type&gt;
     &lt;loader readonly=&#039;yes&#039; type=&#039;pflash&#039;&gt;/usr/share/qemu/ovmf-x64/OVMF_CODE-pure-efi.fd&lt;/loader&gt;
-    &lt;nvram&gt;/etc/libvirt/qemu/nvram/6d701965-a875-23b4-6a45-163dd2c40af5_VARS-pure-efi.fd&lt;/nvram&gt;
+    &lt;nvram&gt;/etc/libvirt/qemu/nvram/c5825689-86ae-3de8-cb03-a875914c8803_VARS-pure-efi.fd&lt;/nvram&gt;
   &lt;/os&gt;
   &lt;features&gt;
     &lt;acpi/&gt;
@@ -1680,7 +1677,7 @@ input[type=checkbox]{margin-left:0}
     &lt;emulator&gt;/usr/local/sbin/qemu&lt;/emulator&gt;
     &lt;disk type=&#039;file&#039; device=&#039;disk&#039;&gt;
       &lt;driver name=&#039;qemu&#039; type=&#039;raw&#039; cache=&#039;writeback&#039;/&gt;
-      &lt;source file=&#039;/mnt/user/domains/CorePlus/vdisk1.img&#039;/&gt;
+      &lt;source file=&#039;/mnt/user/domains/Linux/vdisk1.img&#039;/&gt;
       &lt;target dev=&#039;hdc&#039; bus=&#039;virtio&#039;/&gt;
       &lt;serial&gt;vdisk1&lt;/serial&gt;
       &lt;boot order=&#039;1&#039;/&gt;
@@ -1695,11 +1692,14 @@ input[type=checkbox]{margin-left:0}
     &lt;/controller&gt;
     &lt;controller type=&#039;usb&#039; index=&#039;0&#039; model=&#039;ich9-uhci2&#039;&gt;
       &lt;master startport=&#039;2&#039;/&gt;
-      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x07&#039; function=&#039;0x1&#039; multifunction=&#039;on&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x07&#039; function=&#039;0x1&#039;/&gt;
     &lt;/controller&gt;
     &lt;controller type=&#039;usb&#039; index=&#039;0&#039; model=&#039;ich9-uhci3&#039;&gt;
       &lt;master startport=&#039;4&#039;/&gt;
       &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x07&#039; function=&#039;0x2&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;sata&#039; index=&#039;0&#039;&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x1f&#039; function=&#039;0x2&#039;/&gt;
     &lt;/controller&gt;
     &lt;controller type=&#039;pci&#039; index=&#039;0&#039; model=&#039;pcie-root&#039;/&gt;
     &lt;controller type=&#039;pci&#039; index=&#039;1&#039; model=&#039;pcie-root-port&#039;&gt;
@@ -1730,11 +1730,8 @@ input[type=checkbox]{margin-left:0}
     &lt;controller type=&#039;virtio-serial&#039; index=&#039;0&#039;&gt;
       &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x02&#039; slot=&#039;0x00&#039; function=&#039;0x0&#039;/&gt;
     &lt;/controller&gt;
-    &lt;controller type=&#039;sata&#039; index=&#039;0&#039;&gt;
-      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x1f&#039; function=&#039;0x2&#039;/&gt;
-    &lt;/controller&gt;
     &lt;interface type=&#039;bridge&#039;&gt;
-      &lt;mac address=&#039;52:54:00:88:7a:0a&#039;/&gt;
+      &lt;mac address=&#039;52:54:00:a5:55:9f&#039;/&gt;
       &lt;source bridge=&#039;br0&#039;/&gt;
       &lt;model type=&#039;virtio-net&#039;/&gt;
       &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x01&#039; slot=&#039;0x00&#039; function=&#039;0x0&#039;/&gt;
@@ -1836,7 +1833,7 @@ function SetBootorderfields(usbbootvalue) {
 		} else bootelements[i].removeAttribute("disabled");
 	}
 	var bootelements = document.getElementsByClassName("pcibootorder");
-	const bootpcidevs = {"00:0f.0":"N","00:16.0":"N","00:18.0":"N","00:19.0":"N","00:19.1":"N","00:19.2":"N","00:1a.0":"N","01:00.0":"N","02:00.0":"Y"}  
+	const bootpcidevs = []  
 
 	for(var i = 0; i < bootelements.length; i++) {
 		let bootpciid = bootelements[i].name.split('[') ;
