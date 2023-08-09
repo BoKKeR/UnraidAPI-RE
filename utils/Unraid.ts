@@ -20,6 +20,7 @@ import {
 } from "~/types";
 import { extractUsbDetails } from "./extractUsbDetails";
 import writeTestFile from "./writeTestFile";
+import extractCsrfToken from "./extractCsrfToken";
 
 const fetch = require("node-fetch");
 
