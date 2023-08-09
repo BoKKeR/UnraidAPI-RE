@@ -12,7 +12,7 @@ const result = {
 };
 
 test("Tests against extracted 6.12 version html", () => {
-  const buffer = fs.readFileSync("./unraid-versions/6.12/Dashboard.html");
+  const buffer = fs.readFileSync("./unraid-versions/6.12/dashboard.html");
   const input = extractServerDetails(buffer);
   expect(input.title).toBe(result.title);
   expect(input.cpu).toBe(result.cpu);
