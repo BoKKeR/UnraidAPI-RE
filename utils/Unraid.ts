@@ -713,12 +713,7 @@ export function getCSRFToken(server, auth: string) {
   })
     .then((response) => {
       callSucceeded(server);
-      const regex = /csrf_token:'[A-Za-z0-9]+'/gim;
-      const csrf_token = response?.data
-        ?.match(regex)[0]
-        ?.replace("csrf_token:", "")
-        .replaceAll("'", "");
-      return csrf_token;
+      return extractCsrfToken(response.data);
     })
     .catch((e) => {
       console.log("Get CSRF Token for server: " + server + " Failed");
