@@ -21,8 +21,8 @@ test("Tests against extracted 6.12 version html", () => {
 
   expect(input.motherboard).toBe(result.motherboard);
 
-  const diskSpaceRegex = /^[A-Za-z0-9]+ [A-Za-z0-9]+ used of [A-Za-z0-9]+ [A-Za-z0-9]+ \([^)]*\)$/i;
-  // https://regex-generator.olafneumann.org/?sampleText=815%20MB%20used%20of%20107%20GB%20(0.8%20%25)&flags=Wi&selection=8%7CCharacter,9%7CCharacter,10%7CCharacter,11%7CCharacter,6%7CCharacter,3%7CCharacter,12%7CCharacter,13%7CCharacter,14%7CCharacter,18%7CCharacter,21%7CCharacter,22%7CCharacter,23%7CParentheses,28%7CCharacter,7%7CCharacter,4%7CAlphanumeric%20characters,19%7CAlphanumeric%20characters,0%7CAlphanumeric%20characters,15%7CAlphanumeric%20characters
+  const diskSpaceRegex = /^\d+.?\d+ [A-Z]+ used of \d+.?\d? [A-Z]+ \([^)]*\)$/i;
+  // https://regex-generator.olafneumann.org/
 
   expect(input.cacheSpace).toMatch(diskSpaceRegex);
   expect(input.diskSpace).toMatch(diskSpaceRegex);
