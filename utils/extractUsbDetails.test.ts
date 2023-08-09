@@ -2,8 +2,8 @@ import fs from "fs";
 import { extractUsbDetails } from "./extractUsbDetails";
 
 const result = {
-  id: "0951:1666",
-  name: "Kingston Technology DataTraveler 100 G3/G4/SE9 G2/50"
+  id: "0627:0001",
+  name: "Adomax Technology Co. QEMU USB Tablet"
 };
 
 test("Tests against extracted 6.12 version html for usb", () => {

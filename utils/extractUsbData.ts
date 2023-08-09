@@ -5,7 +5,7 @@ import writeTestFile from "./writeTestFile";
 
 // maybe its not VMData
 function extractUSBData(data: string, vmObject: VMData, ip: string) {
-  writeTestFile(JSON.stringify(vmObject), "vmObject");
+  writeTestFile(JSON.stringify(vmObject), "vmObject.json");
 
   let usbs: UsbData[] = [];
   let usbInfo = extractValue(data, "<td>USB Devices:</td>", "</td>");
