@@ -193,6 +193,7 @@ function getUSBDetails(servers, serverAuth) {
       })
         .then((response) => {
           callSucceeded(ip);
+          writeTestFile(response.data, "updateVM.html");
           updateFile(servers, ip, "status");
           servers[ip].usbDetails = [];
           while (response.data.toString().includes('<label for="usb')) {
@@ -255,7 +256,7 @@ function scrapeHTML(ip: string, serverAuth) {
     .then((response) => {
       callSucceeded(ip);
 
-      writeTestFile(response.data, "Dashboard");
+      writeTestFile(response.data, "dashboard.html");
 
       let details = extractServerDetails(response.data);
 
@@ -338,7 +339,7 @@ function getVMs(servers, serverAuth) {
         servers[ip].vm = {};
         let htmlDetails;
 
-        writeTestFile(response.data, "VMs");
+        writeTestFile(response.data, "virtualMachines.html");
 
         if (response.data.toString().includes("\u0000")) {
           let parts = response.data.toString().split("\u0000");
