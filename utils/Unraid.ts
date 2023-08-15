@@ -21,6 +21,7 @@ import {
 import { extractUsbDetails } from "./extractUsbDetails";
 import writeTestFile from "./writeTestFile";
 import extractCsrfToken from "./extractCsrfToken";
+import { RootServerJSONConfig, Vm } from "~/types/server";
 
 const fetch = require("node-fetch");
 
@@ -80,13 +81,20 @@ export async function getImage(servers, res, path) {
   });
 }
 
-export async function getUnraidDetails(servers, serverAuth) {
+export async function getUnraidDetails(
+  servers: RootServerJSONConfig,
+  serverAuth: string
+) {
   await logIn(servers, serverAuth);
-  getServerDetails(servers, serverAuth);
-  getVMs(servers, serverAuth);
-  getDockers(servers, serverAuth);
-  getUSBDetails(servers, serverAuth);
-  getPCIDetails(servers);
+  await getServerDetails(servers, serverAuth);
+  if (process.env.VM_ENABLED !== "false") {
+    getVMs(servers, serverAuth);
+    getUSBDetails(servers, serverAuth);
+    getPCIDetails(servers);
+  }
+  if (process.env.DOCKER_ENABLED !== "false") {
+    getDockers(servers, serverAuth);
+  }
 }
 
 function logIn(servers, serverAuth) {
@@ -219,8 +227,13 @@ function getUSBDetails(servers, serverAuth) {
   });
 }
 
-function getServerDetails(servers, serverAuth) {
-  Object.keys(servers).forEach(async (ip) => {
+const getServerDetails = async (
+  servers: RootServerJSONConfig,
+  serverAuth: string
+) => {
+  const keys = Object.keys(servers);
+
+  for (const ip of keys) {
     if (servers[ip].serverDetails === undefined) {
       servers[ip].serverDetails = {};
     }
@@ -241,8 +254,8 @@ function getServerDetails(servers, serverAuth) {
     servers[ip].serverDetails.on = servers[ip].status === "online";
 
     updateFile(servers, ip, "serverDetails");
-  });
-}
+  }
+};
 
 function scrapeHTML(ip: string, serverAuth) {
   return axios({
@@ -270,7 +283,7 @@ function scrapeHTML(ip: string, serverAuth) {
         "Get Dashboard Details for ip: " +
           ip +
           " Failed with status code: " +
-          console.log(e.response.data)
+          console.log(e.response?.data)
       );
       if (e.response?.status) {
         callFailed(ip, e.response.status);
@@ -319,7 +332,7 @@ function scrapeMainHTML(ip: string, serverAuth) {
     });
 }
 
-function getVMs(servers, serverAuth) {
+function getVMs(servers: RootServerJSONConfig, serverAuth: string) {
   Object.keys(servers).forEach((ip) => {
     if (!serverAuth[ip]) {
       return;
@@ -336,7 +349,7 @@ function getVMs(servers, serverAuth) {
     })
       .then(async (response) => {
         callSucceeded(ip);
-        servers[ip].vm = {};
+        servers[ip].vm = {} as Vm;
         let htmlDetails;
 
         writeTestFile(response.data, "virtualMachines.html");
@@ -402,7 +415,7 @@ function processDockerResponse(details) {
                   docker.status =
                     child.children[1].children[1].children[1].children[1].contents;
                 }
-                if (child.children[2] && child.children[2].contents) {
+                if (child.children[2]?.contents) {
                   docker.containerId = child.children[2].contents.replace(
                     "Container ID: ",
                     ""
@@ -410,10 +423,10 @@ function processDockerResponse(details) {
                 }
                 break;
               case "updatecolumn":
-                if (child.children[2] && child.children[2].contents) {
+                if (child.children[2]?.contents) {
                   docker.tag = child.children[2].contents.trim();
                 }
-                if (child.children[0] && child.children[0].contents) {
+                if (child.children[0]?.contents) {
                   docker.uptoDate = child.children[0].contents.trim();
                 }
                 break;
@@ -428,16 +441,12 @@ function processDockerResponse(details) {
                   child.children[0].children[0].children[0].tags.src;
                 break;
               case 1:
-                if (child && child.contents) {
+                if (child?.contents) {
                   docker.imageId = child.contents.replace("Image ID: ", "");
                 }
                 break;
               case 2:
-                if (
-                  child &&
-                  child.contents &&
-                  child.contents.includes("Created")
-                ) {
+                if (child?.contents?.includes("Created")) {
                   docker.created = child.contents;
                 }
                 break;
@@ -483,7 +492,7 @@ function getDockers(servers, serverAuth) {
       })
       .catch((e) => {
         console.log("Get Docker Details for ip: " + ip + " Failed");
-        if (e.response && e.response.status) {
+        if (e.response?.status) {
           callFailed(ip, e.response.status);
         } else {
           callFailed(ip, 404);
@@ -497,7 +506,7 @@ function updateFile(servers, ip: string, tag: string) {
   let oldServers = {};
   try {
     let rawdata = fs.readFileSync("config/servers.json");
-    oldServers = JSON.parse(rawdata);
+    oldServers = JSON.parse(rawdata.toString());
   } catch (e) {
     console.log(e);
   } finally {
@@ -789,7 +798,12 @@ export function changeArrayState(
     });
 }
 
-export function changeServerState(action, server, auth, token) {
+export function changeServerState(
+  action: string,
+  server: string,
+  auth: string,
+  token: string
+) {
   switch (action) {
     case "shutdown":
       return axios({
@@ -931,9 +945,15 @@ export function changeServerState(action, server, auth, token) {
   }
 }
 
-export async function changeVMState(id, action, server, auth, token) {
+export async function changeVMState(
+  id: string,
+  action: string,
+  server: string,
+  auth: string,
+  token: string
+) {
   if (!token) {
-    token = await getCSRFToken(server, auth);
+    token = (await getCSRFToken(server, auth)) as string;
     console.log("Got new CSRF_token: " + token);
   }
   return axios({
@@ -979,7 +999,7 @@ export async function changeDockerState(
   token: string
 ) {
   if (!token) {
-    token = await getCSRFToken(server, auth);
+    token = (await getCSRFToken(server, auth)) as string;
     console.log("Got new CSRF_token: " + token);
   }
   return axios({
@@ -1274,7 +1294,7 @@ function extractShareData(response) {
   return shares;
 }
 
-function extractUSBData(response, vmObject, ip) {
+function extractUSBData(response, vmObject, ip: string) {
   let usbs: UsbData[] = [];
   let usbInfo = extractValue(response.data, "<td>USB Devices:</td>", "</td>");
   while (usbInfo.includes('value="')) {
