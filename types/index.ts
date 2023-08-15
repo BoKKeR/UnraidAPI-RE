@@ -19,9 +19,13 @@ export type UsbData = {
 };
 
 export type PCIData = {
+  gpu?: boolean;
+  id: string;
   name: string;
   checked: boolean;
-  id: string;
+  position?: number;
+  bios?: string;
+  sound?: boolean;
 };
 
 export type GPUData = {
