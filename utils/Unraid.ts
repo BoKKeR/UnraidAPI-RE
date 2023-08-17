@@ -87,12 +87,12 @@ export async function getUnraidDetails(
 ) {
   await logIn(servers, serverAuth);
   await getServerDetails(servers, serverAuth);
-  if (process.env.VM_ENABLED !== "false") {
+  if (process.env.VM_ENABLE !== "false") {
     getVMs(servers, serverAuth);
     getUSBDetails(servers, serverAuth);
     getPCIDetails(servers);
   }
-  if (process.env.DOCKER_ENABLED !== "false") {
+  if (process.env.DOCKER_ENABLE !== "false") {
     getDockers(servers, serverAuth);
   }
 }
