@@ -257,8 +257,12 @@ const getServerDetails = async (
         ...servers[ip].serverDetails
       } || servers[ip].serverDetails;
 
+    // vm not enabled, we clear the object
+    if (!servers[ip].serverDetails.vmEnabled) {
+      delete servers[ip].vm;
+    }
+
     servers[ip].serverDetails.on = servers[ip].status === "online";
-    console.log(servers[ip].serverDetails.vmEnabled);
     updateFile(servers, ip, "serverDetails");
   }
 };
