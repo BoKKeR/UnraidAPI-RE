@@ -160,10 +160,6 @@ function logInToUrl(url: string, data: any, ip: string) {
 
 export function getPCIDetails(servers, skipSave?: boolean) {
   Object.keys(servers).forEach((ip) => {
-    if (!servers[ip].serverDetails.vmEnabled) {
-      return;
-    }
-
     if (
       servers[ip].vm?.details &&
       Object.keys(servers[ip].vm.details).length > 0 &&
@@ -183,10 +179,6 @@ export function getPCIDetails(servers, skipSave?: boolean) {
 function getUSBDetails(servers, serverAuth) {
   Object.keys(servers).forEach((ip) => {
     if (!serverAuth[ip]) {
-      return;
-    }
-
-    if (!servers[ip].serverDetails.vmEnabled) {
       return;
     }
 
@@ -260,6 +252,8 @@ const getServerDetails = async (
     // vm not enabled, we clear the object
     if (!servers[ip].serverDetails.vmEnabled) {
       delete servers[ip].vm;
+      delete servers[ip].pciDetails;
+      delete servers[ip].usbDetails;
     }
 
     servers[ip].serverDetails.on = servers[ip].status === "online";
