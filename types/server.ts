@@ -61,6 +61,8 @@ export interface ServerDetails {
   cacheTotalSpace: string;
   cacheFreeSpace: string;
   on: boolean;
+
+  vmEnabled?: boolean;
 }
 
 export interface Vm {
