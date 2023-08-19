@@ -477,7 +477,7 @@ function processDockerResponse(details) {
   return { images, containers };
 }
 
-function getDockers(servers, serverAuth) {
+function getDockers(servers: RootServerJSONConfig, serverAuth: string) {
   Object.keys(servers).forEach((ip) => {
     if (!serverAuth[ip]) {
       return;
