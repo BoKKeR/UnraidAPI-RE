@@ -871,8 +871,8 @@ function getDockerDetails(
         name: `${serverTitleSanitised}_docker_${docker.name}`,
         unique_id: serverTitleSanitised + "_" + docker.name,
         device: {
-          identifiers: [serverTitleSanitised + "_" + docker.name],
-          name: serverTitleSanitised + "_docker_" + docker.name,
+          identifiers: [serverTitleSanitised],
+          name: serverTitleSanitised,
           manufacturer: server.serverDetails.motherboard,
           model: "Docker"
         },
