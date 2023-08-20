@@ -524,7 +524,10 @@ function updateFile(servers, ip: string, tag: string) {
       oldServers[ip] = {};
     }
     oldServers[ip][tag] = servers[ip][tag];
-    fs.writeFileSync("config/servers.json", JSON.stringify(oldServers));
+    fs.writeFileSync(
+      "config/servers.json",
+      JSON.stringify(oldServers, null, 4)
+    );
   }
 }
 
