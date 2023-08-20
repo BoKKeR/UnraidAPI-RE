@@ -5,19 +5,13 @@ export interface RootServerJSONConfig {
 }
 
 export interface ServerJSONConfig {
-  docker: Docker;
+  docker?: Docker;
   serverDetails: ServerDetails;
-  vm: Vm;
-  pciDetails: PCIData[];
+  vm?: Vm;
+  pciDetails?: PCIData[];
   status: string;
-  usbDetails: any[];
-  metadata: ServerMetadata;
+  usbDetails?: any[];
 }
-
-// used for unraid-api to set information about the server
-export type ServerMetadata = {
-  vmEnabled: boolean;
-};
 
 export interface DockerObject {
   details: Details;
@@ -63,6 +57,7 @@ export interface ServerDetails {
   on: boolean;
 
   vmEnabled?: boolean;
+  dockerEnabled?: boolean;
 }
 
 export interface Vm {

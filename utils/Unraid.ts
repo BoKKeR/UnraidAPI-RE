@@ -23,6 +23,7 @@ import writeTestFile from "./writeTestFile";
 import extractCsrfToken from "./extractCsrfToken";
 import { enableVmFetching } from "./enableVmFetching";
 import { RootServerJSONConfig, Vm } from "~/types/server";
+import { enableDockerFetching } from "./enableDockerFetching";
 
 const fetch = require("node-fetch");
 
@@ -249,15 +250,24 @@ const getServerDetails = async (
         ...servers[ip].serverDetails
       } || servers[ip].serverDetails;
 
+    servers[ip].serverDetails.on = servers[ip].status === "online";
+    updateFile(servers, ip, "serverDetails");
+
     // vm not enabled, we clear the object
     if (!servers[ip].serverDetails.vmEnabled) {
       delete servers[ip].vm;
       delete servers[ip].pciDetails;
       delete servers[ip].usbDetails;
+      updateFile(servers, ip, "vm");
+      updateFile(servers, ip, "pciDetails");
+      updateFile(servers, ip, "usbDetails");
     }
 
-    servers[ip].serverDetails.on = servers[ip].status === "online";
-    updateFile(servers, ip, "serverDetails");
+    // docker not enabled, we clear the object
+    if (!servers[ip].serverDetails.dockerEnabled) {
+      delete servers[ip].docker;
+      updateFile(servers, ip, "docker");
+    }
   }
 };
 
@@ -323,7 +333,8 @@ function scrapeMainHTML(ip: string, serverAuth: string) {
         arrayProtection: protection.includes(">") ? undefined : protection,
         moverRunning: response.data.includes("Disabled - Mover is running."),
         parityCheckRunning: response.data.includes("Parity-Check in progress."),
-        vmEnabled: enableVmFetching(response.data)
+        vmEnabled: enableVmFetching(response.data),
+        dockerEnabled: enableDockerFetching(response.data)
       };
     })
     .catch((e) => {
@@ -480,6 +491,10 @@ function processDockerResponse(details) {
 function getDockers(servers: RootServerJSONConfig, serverAuth: string) {
   Object.keys(servers).forEach((ip) => {
     if (!serverAuth[ip]) {
+      return;
+    }
+
+    if (!servers[ip].serverDetails.dockerEnabled) {
       return;
     }
     axios({
