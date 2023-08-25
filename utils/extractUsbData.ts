@@ -1,44 +1,40 @@
 import { UsbData, VMData } from "~/types";
 import { extractValue } from "./extractValue";
-import fs from "fs";
 import writeTestFile from "./writeTestFile";
+import * as cheerio from "cheerio";
 
 // maybe its not VMData
 function extractUSBData(data: string, vmObject: VMData, ip: string) {
   writeTestFile(JSON.stringify(vmObject), "vmObject.json");
 
   let usbs: UsbData[] = [];
+
   let usbInfo = extractValue(data, "<td>USB Devices:</td>", "</td>");
-  while (usbInfo.includes('value="')) {
-    let row = extractValue(usbInfo, 'value="', " (");
-    let usb = {} as UsbData;
-    if (row.includes("checked")) {
-      usb.checked = true;
-    }
-    usb.id = row.substring(0, row.indexOf('"'));
-    usb.name = row.substring(row.indexOf("/") + 3);
-    usb.connected = true;
-    usbs.push(usb);
-    usbInfo = usbInfo.replace('value="', "");
-  }
-  let rawdata = fs.readFileSync("config/servers.json");
-  let servers = JSON.parse(rawdata.toString());
-  let oldUsbs: UsbData[] = [];
-  try {
-    if (servers[ip].vm?.details[vmObject.id]?.edit) {
-      oldUsbs = servers[ip].vm.details[vmObject.id].edit.usbs;
-    }
-  } catch (error) {
-    console.log("error getting old Usb devices for VM");
-  }
-  if (oldUsbs && oldUsbs.length > usbs.length) {
-    oldUsbs.forEach((usb) => {
-      if (usbs.filter((usbInner) => usbInner.id === usb.id).length === 0) {
-        usb.connected = false;
-        usbs.push(usb);
-      }
+  const $ = cheerio.load(usbInfo, null, false);
+
+  $("label").map((index, elm) => {
+    const isChecked = !!$(elm)
+      .html()
+      ?.includes("checked");
+    const nameWithId = $(elm)
+      .text()
+      .trim();
+
+    const idArray = nameWithId.split(" (");
+
+    const name = idArray[idArray.length - 2];
+
+    const id = $(elm)
+      .find("input")
+      .attr("value");
+    usbs.push({
+      // @ts-ignore
+      id: id,
+      name: name,
+      checked: isChecked,
+      connected: isChecked
     });
-  }
+  });
 
   return usbs;
 }
