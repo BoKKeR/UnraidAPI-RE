@@ -1503,7 +1503,7 @@ async function buildForm(
   return form;
 }
 
-export function getStaticPart(vmObject, id: string, create: string) {
+export function getStaticPart(vmObject, id: string, create: boolean) {
   return (
     "template%5Bos%5D=" +
     vmObject.template_os +
