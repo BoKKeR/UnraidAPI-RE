@@ -12,7 +12,7 @@ import {
   getUSBPart,
   removePCICheck
 } from "../../../utils/Unraid";
-import { extractValue } from "./../../../utils/extractValue";
+import { extractValue } from "../../../utils/extractValue";
 
 describe("PCI Check Changes", () => {
   let examplePCIInput = {
