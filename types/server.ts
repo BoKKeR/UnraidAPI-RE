@@ -1,5 +1,7 @@
 import { Disk, Docker, PCIData, UsbData } from ".";
 
+export type DockerAction = "domain-start" | "domain-restart" | "domain-stop";
+
 export interface RootServerJSONConfig {
   [key: string]: ServerJSONConfig;
 }

@@ -22,7 +22,7 @@ import { extractUsbDetails } from "./extractUsbDetails";
 import writeTestFile from "./writeTestFile";
 import extractCsrfToken from "./extractCsrfToken";
 import { enableVmFetching } from "./enableVmFetching";
-import { RootServerJSONConfig, Vm } from "~/types/server";
+import { DockerAction, RootServerJSONConfig, Vm } from "~/types/server";
 import { enableDockerFetching } from "./enableDockerFetching";
 import extractUSBData from "./extractUsbData";
 
@@ -36,14 +36,15 @@ axios.defaults.httpsAgent = new https.Agent({
   rejectUnauthorized: false
 });
 
-let authCookies = {};
+const authCookies = {};
 
 export async function getImage(servers, res, path) {
-  let serverAuth = JSON.parse(
+  const serverAuth = JSON.parse(
     fs
       .readFileSync(
-        (process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/") +
-          "mqttKeys"
+        `${
+          process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
+        }mqttKeys`
       )
       .toString()
   );
@@ -52,13 +53,13 @@ export async function getImage(servers, res, path) {
 
   Object.keys(servers).forEach((server) => {
     fetch(
-      (server.includes("http") ? server : "http://" + server) +
+      (server.includes("http") ? server : `http://${server}`) +
         (path.includes("plugins") ? "/state" : "/plugins") +
         path,
       {
         method: "get",
         headers: {
-          Authorization: "Basic " + serverAuth[server],
+          Authorization: `Basic ${serverAuth[server]}`,
           Cookie: authCookies[server] ? authCookies[server] : "",
           "content-type": "image/png"
         }
@@ -97,7 +98,7 @@ export async function getUnraidDetails(
 }
 
 function logIn(servers: RootServerJSONConfig, serverAuth: string) {
-  let promises: Promise<any>[] = [];
+  const promises: Promise<any>[] = [];
   Object.keys(servers).forEach((ip) => {
     if (!serverAuth[ip] || (authCookies[ip] && authCookies[ip] !== undefined)) {
       if (!serverAuth[ip]) {
@@ -110,18 +111,14 @@ function logIn(servers: RootServerJSONConfig, serverAuth: string) {
     servers[ip].status = "offline";
     const buff = Buffer.from(serverAuth[ip], "base64");
 
-    let details = buff.toString("ascii");
+    const details = buff.toString("ascii");
 
-    let data = new FormData();
+    const data = new FormData();
     data.append("username", details.substring(0, details.indexOf(":")));
     data.append("password", details.substring(details.indexOf(":") + 1));
 
     promises.push(
-      logInToUrl(
-        (ip.includes("http") ? ip : "http://" + ip) + "/login",
-        data,
-        ip
-      )
+      logInToUrl(`${ip.includes("http") ? ip : `http://${ip}`}/login`, data, ip)
     );
   });
 
@@ -190,12 +187,11 @@ function getUSBDetails(servers, serverAuth) {
     ) {
       axios({
         method: "get",
-        url:
-          (ip.includes("http") ? ip : "http://" + ip) +
-          "/VMs/UpdateVM?uuid=" +
-          servers[ip].vm.details[Object.keys(servers[ip].vm.details)[0]].id,
+        url: `${ip.includes("http") ? ip : `http://${ip}`}/VMs/UpdateVM?uuid=${
+          servers[ip].vm.details[Object.keys(servers[ip].vm.details)[0]].id
+        }`,
         headers: {
-          Authorization: "Basic " + serverAuth[ip],
+          Authorization: `Basic ${serverAuth[ip]}`,
           Cookie: authCookies[ip] ? authCookies[ip] : ""
         }
       })
@@ -212,7 +208,7 @@ function getUSBDetails(servers, serverAuth) {
           updateFile(servers, ip, "usbDetails");
         })
         .catch((e) => {
-          console.log("Get USB Details for ip: " + ip + " Failed");
+          console.log(`Get USB Details for ip: ${ip} Failed`);
           if (e.response?.status) {
             callFailed(ip, e.response.status);
           } else {
@@ -275,9 +271,9 @@ const getServerDetails = async (
 function scrapeHTML(ip: string, serverAuth) {
   return axios({
     method: "get",
-    url: (ip.includes("http") ? ip : "http://" + ip) + "/Dashboard",
+    url: `${ip.includes("http") ? ip : `http://${ip}`}/Dashboard`,
     headers: {
-      Authorization: "Basic " + serverAuth[ip],
+      Authorization: `Basic ${serverAuth[ip]}`,
       Cookie: authCookies[ip] ? authCookies[ip] : ""
     }
   })
@@ -286,7 +282,7 @@ function scrapeHTML(ip: string, serverAuth) {
 
       writeTestFile(response.data, "dashboard.html");
 
-      let details = extractServerDetails(response.data);
+      const details = extractServerDetails(response.data);
 
       extractDiskDetails(details, "diskSpace", "array");
       extractDiskDetails(details, "cacheSpace", "cache");
@@ -295,10 +291,9 @@ function scrapeHTML(ip: string, serverAuth) {
     })
     .catch((e) => {
       console.log(
-        "Get Dashboard Details for ip: " +
-          ip +
-          " Failed with status code: " +
-          console.log(e.response?.data)
+        `Get Dashboard Details for ip: ${ip} Failed with status code: ${console.log(
+          e.response?.data
+        )}`
       );
       if (e.response?.status) {
         callFailed(ip, e.response.status);
@@ -312,15 +307,15 @@ function scrapeHTML(ip: string, serverAuth) {
 function scrapeMainHTML(ip: string, serverAuth: string) {
   return axios({
     method: "get",
-    url: (ip.includes("http") ? ip : "http://" + ip) + "/Main",
+    url: `${ip.includes("http") ? ip : `http://${ip}`}/Main`,
     headers: {
-      Authorization: "Basic " + serverAuth[ip],
+      Authorization: `Basic ${serverAuth[ip]}`,
       Cookie: authCookies[ip] ? authCookies[ip] : ""
     }
   })
     .then((response) => {
       callSucceeded(ip);
-      let protection = extractValue(
+      const protection = extractValue(
         response.data,
         "</td></tr>\n          <tr><td>",
         "</td><td>"
@@ -339,7 +334,7 @@ function scrapeMainHTML(ip: string, serverAuth: string) {
       };
     })
     .catch((e) => {
-      console.log("Get Main Details for ip: " + ip + " Failed");
+      console.log(`Get Main Details for ip: ${ip} Failed`);
       if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
@@ -361,11 +356,11 @@ function getVMs(servers: RootServerJSONConfig, serverAuth: string) {
 
     axios({
       method: "get",
-      url:
-        (ip.includes("http") ? ip : "http://" + ip) +
-        "/plugins/dynamix.vm.manager/include/VMMachines.php",
+      url: `${
+        ip.includes("http") ? ip : `http://${ip}`
+      }/plugins/dynamix.vm.manager/include/VMMachines.php`,
       headers: {
-        Authorization: "Basic " + serverAuth[ip],
+        Authorization: `Basic ${serverAuth[ip]}`,
         Cookie: authCookies[ip] ? authCookies[ip] : ""
       }
     })
@@ -377,7 +372,7 @@ function getVMs(servers: RootServerJSONConfig, serverAuth: string) {
         writeTestFile(response.data, "virtualMachines.html");
 
         if (response.data.toString().includes("\u0000")) {
-          let parts = response.data.toString().split("\u0000");
+          const parts = response.data.toString().split("\u0000");
           htmlDetails = JSON.stringify(parts[0]);
           try {
             servers[ip].vm.extras = parts[1];
@@ -388,7 +383,7 @@ function getVMs(servers: RootServerJSONConfig, serverAuth: string) {
           htmlDetails = response.data.toString();
         }
 
-        let details = parseHTML(htmlDetails);
+        const details = parseHTML(htmlDetails);
         try {
           servers[ip].vm.details = await processVMResponse(
             details,
@@ -401,7 +396,7 @@ function getVMs(servers: RootServerJSONConfig, serverAuth: string) {
         updateFile(servers, ip, "vm");
       })
       .catch((e) => {
-        console.log("Get VM Details for ip: " + ip + " Failed");
+        console.log(`Get VM Details for ip: ${ip} Failed`);
         if (e.response?.status) {
           callFailed(ip, e.response.status);
         } else {
@@ -413,11 +408,11 @@ function getVMs(servers: RootServerJSONConfig, serverAuth: string) {
 }
 
 function processDockerResponse(details) {
-  let images = {};
-  let containers = {};
+  const images = {};
+  const containers = {};
   details.forEach((row) => {
     if (!row.content || !row.content.includes("undefined")) {
-      let docker: Partial<Docker> = {};
+      const docker: Partial<Docker> = {};
       row.children.forEach((child, index) => {
         try {
           if (child.tags.class) {
@@ -500,24 +495,24 @@ function getDockers(servers: RootServerJSONConfig, serverAuth: string) {
     }
     axios({
       method: "get",
-      url:
-        (ip.includes("http") ? ip : "http://" + ip) +
-        "/plugins/dynamix.docker.manager/include/DockerContainers.php",
+      url: `${
+        ip.includes("http") ? ip : `http://${ip}`
+      }/plugins/dynamix.docker.manager/include/DockerContainers.php`,
       headers: {
-        Authorization: "Basic " + serverAuth[ip],
+        Authorization: `Basic ${serverAuth[ip]}`,
         Cookie: authCookies[ip] ? authCookies[ip] : ""
       }
     })
       .then(async (response) => {
         callSucceeded(ip);
-        let htmlDetails = JSON.stringify(response.data);
-        let details = parseHTML(htmlDetails);
+        const htmlDetails = JSON.stringify(response.data);
+        const details = parseHTML(htmlDetails);
         servers[ip].docker = {};
         servers[ip].docker.details = await processDockerResponse(details);
         updateFile(servers, ip, "docker");
       })
       .catch((e) => {
-        console.log("Get Docker Details for ip: " + ip + " Failed");
+        console.log(`Get Docker Details for ip: ${ip} Failed`);
         if (e.response?.status) {
           callFailed(ip, e.response.status);
         } else {
@@ -531,7 +526,7 @@ function getDockers(servers: RootServerJSONConfig, serverAuth: string) {
 function updateFile(servers, ip: string, tag: string) {
   let oldServers = {};
   try {
-    let rawdata = fs.readFileSync("config/servers.json");
+    const rawdata = fs.readFileSync("config/servers.json");
     oldServers = JSON.parse(rawdata.toString());
   } catch (e) {
     console.log(e);
@@ -548,9 +543,9 @@ function updateFile(servers, ip: string, tag: string) {
 }
 
 function parseHTML(html: string) {
-  let parsedHtml = [];
+  const parsedHtml = [];
   while (isRemaining(html)) {
-    let result = parseTag(
+    const result = parseTag(
       html.substring(html.indexOf("<"), html.indexOf(">") + 1),
       html
     );
@@ -577,14 +572,14 @@ function parseTag(tag: string, remaining: string) {
   const open = processTags(tag, object);
 
   if (!isClosingTag(remaining, open) && isRemaining(remaining)) {
-    let result = {};
+    const result = {};
     result.contains = [];
-    let contentCheck = checkContents(remaining, object);
+    const contentCheck = checkContents(remaining, object);
     remaining = contentCheck.remaining;
     object = contentCheck.object;
     while (hasChildren(remaining)) {
       if (remaining.indexOf("<img") === 0) {
-        let img = {};
+        const img = {};
         processTags(
           remaining.substring(
             remaining.indexOf("<"),
@@ -596,13 +591,13 @@ function parseTag(tag: string, remaining: string) {
         remaining = remaining.substring(remaining.indexOf(">") + 1);
         continue;
       }
-      let child = parseTag(
+      const child = parseTag(
         remaining.substring(remaining.indexOf("<"), remaining.indexOf(">") + 1),
         remaining
       );
       result.contains.push(child.contains);
       remaining = child.remaining;
-      let contentCheck = checkContents(remaining, object);
+      const contentCheck = checkContents(remaining, object);
       remaining = contentCheck.remaining;
       object = contentCheck.object;
     }
@@ -612,7 +607,7 @@ function parseTag(tag: string, remaining: string) {
     object.children = result.contains;
   }
   if (isRemaining(remaining) && isClosingTag(remaining, open)) {
-    let contentCheck = checkContents(remaining, object);
+    const contentCheck = checkContents(remaining, object);
     remaining = contentCheck.remaining;
     object = contentCheck.object;
     remaining = remaining.substring(remaining.indexOf(">") + 1);
@@ -625,13 +620,13 @@ function parseTag(tag: string, remaining: string) {
 
 function processTags(tag, object) {
   tag = tag.replace(">", "");
-  let tagParts = tag.split(" ");
-  let open = tagParts.shift().substring(1);
+  const tagParts = tag.split(" ");
+  const open = tagParts.shift().substring(1);
   object.tags = {};
   if (tagParts && tagParts.length > 0) {
     tagParts
       .map((part) => {
-        let tags = part.split("=");
+        const tags = part.split("=");
         return { name: clean(tags[0]), value: clean(tags[1]) };
       })
       .forEach((tag) => {
@@ -649,7 +644,7 @@ function clean(value: string) {
 }
 
 function isClosingTag(remaining, open) {
-  return remaining.indexOf("</" + open + ">") === 0;
+  return remaining.indexOf(`</${open}>`) === 0;
 }
 
 function checkContents(remaining, object) {
@@ -673,7 +668,7 @@ function hasChildren(remaining) {
 }
 
 function processVMResponse(response, ip, auth) {
-  let object = [];
+  const object = [];
   groupVmDetails(response, object);
   return simplifyResponse(object, ip, auth);
 }
@@ -695,7 +690,7 @@ function groupVmDetails(response, object) {
 }
 
 async function simplifyResponse(object, ip: string, auth: string) {
-  let temp = {};
+  const temp = {};
   for (const vm of object) {
     let newVMObject = {} as VMData;
     newVMObject.name =
@@ -717,10 +712,10 @@ async function simplifyResponse(object, ip: string, auth: string) {
     if (vm.child.children[0].children[0].children[0].children) {
       vm.child.children[0].children[0].children[0].children.forEach(
         (driveDetails) => {
-          let detailsArr = driveDetails.children.map((drive) => {
+          const detailsArr = driveDetails.children.map((drive) => {
             return drive.contents;
           });
-          let details = {
+          const details = {
             path: detailsArr[0],
             interface: detailsArr[1],
             allocated: detailsArr[2],
@@ -745,9 +740,9 @@ async function simplifyResponse(object, ip: string, auth: string) {
 export function getCSRFToken(server: string, auth: string) {
   return axios({
     method: "get",
-    url: (server.includes("http") ? server : "http://" + server) + "/Dashboard",
+    url: `${server.includes("http") ? server : `http://${server}`}/Dashboard`,
     headers: {
-      Authorization: "Basic " + auth,
+      Authorization: `Basic ${auth}`,
       Cookie: authCookies[server] ? authCookies[server] : ""
     }
   })
@@ -756,7 +751,7 @@ export function getCSRFToken(server: string, auth: string) {
       return extractCsrfToken(response.data);
     })
     .catch((e) => {
-      console.log("Get CSRF Token for server: " + server + " Failed");
+      console.log(`Get CSRF Token for server: ${server} Failed`);
       if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
@@ -798,18 +793,17 @@ export function changeArrayState(
 ) {
   return axios({
     method: "POST",
-    url:
-      (server.includes("http") ? server : "http://" + server) + "/update.htm",
+    url: `${server.includes("http") ? server : `http://${server}`}/update.htm`,
     headers: {
-      Authorization: "Basic " + auth,
+      Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
       Cookie: authCookies[server] ? authCookies[server] : ""
     },
     data:
       action === "start"
-        ? "startState=STOPPED&file=&csrf_token=" + token + "&cmdStart=Start"
-        : "startState=STARTED&file=&csrf_token=" + token + "&cmdStop=Stop",
+        ? `startState=STOPPED&file=&csrf_token=${token}&cmdStart=Start`
+        : `startState=STARTED&file=&csrf_token=${token}&cmdStop=Stop`,
     httpAgent: new http.Agent({ keepAlive: true })
   })
     .then((response) => {
@@ -817,7 +811,7 @@ export function changeArrayState(
       return response.data;
     })
     .catch((e) => {
-      console.log("Change Array State for ip: " + server + " Failed");
+      console.log(`Change Array State for ip: ${server} Failed`);
       if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
@@ -837,16 +831,16 @@ export function changeServerState(
     case "shutdown":
       return axios({
         method: "POST",
-        url:
-          (server.includes("http") ? server : "http://" + server) +
-          "/webGui/include/Boot.php",
+        url: `${
+          server.includes("http") ? server : `http://${server}`
+        }/webGui/include/Boot.php`,
         headers: {
-          Authorization: "Basic " + auth,
+          Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
           Cookie: authCookies[server] ? authCookies[server] : ""
         },
-        data: "csrf_token=" + token + "&cmd=shutdown",
+        data: `csrf_token=${token}&cmd=shutdown`,
         httpAgent: new http.Agent({ keepAlive: true })
       })
         .then(() => {
@@ -859,16 +853,16 @@ export function changeServerState(
     case "reboot":
       return axios({
         method: "POST",
-        url:
-          (server.includes("http") ? server : "http://" + server) +
-          "/webGui/include/Boot.php",
+        url: `${
+          server.includes("http") ? server : `http://${server}`
+        }/webGui/include/Boot.php`,
         headers: {
-          Authorization: "Basic " + auth,
+          Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
           Cookie: authCookies[server] ? authCookies[server] : ""
         },
-        data: "csrf_token=" + token + "&cmd=reboot",
+        data: `csrf_token=${token}&cmd=reboot`,
         httpAgent: new http.Agent({ keepAlive: true })
       })
         .then(() => {
@@ -881,16 +875,16 @@ export function changeServerState(
     case "move":
       return axios({
         method: "POST",
-        url:
-          (server.includes("http") ? server : "http://" + server) +
-          "/update.htm",
+        url: `${
+          server.includes("http") ? server : `http://${server}`
+        }/update.htm`,
         headers: {
-          Authorization: "Basic " + auth,
+          Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
           Cookie: authCookies[server] ? authCookies[server] : ""
         },
-        data: "cmdStartMover=Move&csrf_token=" + token,
+        data: `cmdStartMover=Move&csrf_token=${token}`,
         httpAgent: new http.Agent({ keepAlive: true })
       })
         .then(() => {
@@ -903,18 +897,16 @@ export function changeServerState(
     case "check":
       return axios({
         method: "POST",
-        url:
-          (server.includes("http") ? server : "http://" + server) +
-          "/update.htm",
+        url: `${
+          server.includes("http") ? server : `http://${server}`
+        }/update.htm`,
         headers: {
-          Authorization: "Basic " + auth,
+          Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
           Cookie: authCookies[server] ? authCookies[server] : ""
         },
-        data:
-          "startState=STARTED&file=&cmdCheck=Check&optionCorrect=correct&csrf_token=" +
-          token,
+        data: `startState=STARTED&file=&cmdCheck=Check&optionCorrect=correct&csrf_token=${token}`,
         httpAgent: new http.Agent({ keepAlive: true })
       })
         .then(() => {
@@ -927,17 +919,16 @@ export function changeServerState(
     case "check-cancel":
       return axios({
         method: "POST",
-        url:
-          (server.includes("http") ? server : "http://" + server) +
-          "/update.htm",
+        url: `${
+          server.includes("http") ? server : `http://${server}`
+        }/update.htm`,
         headers: {
-          Authorization: "Basic " + auth,
+          Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
           Cookie: authCookies[server] ? authCookies[server] : ""
         },
-        data:
-          "startState=STARTED&file=&csrf_token=" + token + "&cmdNoCheck=Cancel",
+        data: `startState=STARTED&file=&csrf_token=${token}&cmdNoCheck=Cancel`,
         httpAgent: new http.Agent({ keepAlive: true })
       })
         .then(() => {
@@ -950,11 +941,11 @@ export function changeServerState(
     case "sleep":
       return axios({
         method: "GET",
-        url:
-          (server.includes("http") ? server : "http://" + server) +
-          "/plugins/dynamix.s3.sleep/include/SleepMode.php",
+        url: `${
+          server.includes("http") ? server : `http://${server}`
+        }/plugins/dynamix.s3.sleep/include/SleepMode.php`,
         headers: {
-          Authorization: "Basic " + auth,
+          Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
           Cookie: authCookies[server] ? authCookies[server] : ""
@@ -983,20 +974,20 @@ export async function changeVMState(
 ) {
   if (!token) {
     token = (await getCSRFToken(server, auth)) as string;
-    console.log("Got new CSRF_token: " + token);
+    console.log(`Got new CSRF_token: ${token}`);
   }
   return axios({
     method: "POST",
-    url:
-      (server.includes("http") ? server : "http://" + server) +
-      "/plugins/dynamix.vm.manager/include/VMajax.php",
+    url: `${
+      server.includes("http") ? server : `http://${server}`
+    }/plugins/dynamix.vm.manager/include/VMajax.php`,
     headers: {
-      Authorization: "Basic " + auth,
+      Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
       Cookie: authCookies[server] ? authCookies[server] : ""
     },
-    data: "uuid=" + id + "&action=" + action + "&csrf_token=" + token,
+    data: `uuid=${id}&action=${action}&csrf_token=${token}`,
     httpAgent: new http.Agent({ keepAlive: true })
   })
     .then((response) => {
@@ -1010,7 +1001,7 @@ export async function changeVMState(
       return response.data;
     })
     .catch((e) => {
-      console.log("Change VM State for ip: " + server + " Failed");
+      console.log(`Change VM State for ip: ${server} Failed`);
       if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
@@ -1022,33 +1013,32 @@ export async function changeVMState(
 
 export async function changeDockerState(
   id: string,
-  action: string,
+  action: DockerAction,
   server: string,
   auth: string,
   token: string
 ) {
+  console.log(action);
+
   if (!token) {
     token = (await getCSRFToken(server, auth)) as string;
-    console.log("Got new CSRF_token: " + token);
+    console.log(`Got new CSRF_token: ${token}`);
   }
   return axios({
     method: "POST",
-    url:
-      (server.includes("http") ? server : "http://" + server) +
-      "/plugins/dynamix.docker.manager/include/Events.php",
+    url: `${
+      server.includes("http") ? server : `http://${server}`
+    }/plugins/dynamix.docker.manager/include/Events.php`,
     headers: {
-      Authorization: "Basic " + auth,
+      Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
       Cookie: authCookies[server] ? authCookies[server] : ""
     },
-    data:
-      "container=" +
-      id +
-      "&action=" +
-      action.replace("domain-", "") +
-      "&csrf_token=" +
-      token,
+    data: `container=${id}&action=${action.replace(
+      "domain-",
+      ""
+    )}&csrf_token=${token}`,
     httpAgent: new http.Agent({ keepAlive: true })
   })
     .then((response) => {
@@ -1062,7 +1052,7 @@ export async function changeDockerState(
       return response.data;
     })
     .catch((e) => {
-      console.log("Change Docker State for ip: " + server + " Failed");
+      console.log(`Change Docker State for ip: ${server} Failed`);
       if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
@@ -1078,17 +1068,16 @@ export function gatherDetailsFromEditVM(
   vmObject,
   auth
 ) {
-  let rawdata = fs.readFileSync("config/servers.json");
-  let servers = JSON.parse(rawdata.toString());
+  const rawdata = fs.readFileSync("config/servers.json");
+  const servers = JSON.parse(rawdata.toString());
   if (!vmObject) {
     vmObject = servers[ip].vm.details[id];
   }
   return axios({
     method: "get",
-    url:
-      (ip.includes("http") ? ip : "http://" + ip) + "/VMs/UpdateVM?uuid=" + id,
+    url: `${ip.includes("http") ? ip : `http://${ip}`}/VMs/UpdateVM?uuid=${id}`,
     headers: {
-      Authorization: "Basic " + auth,
+      Authorization: `Basic ${auth}`,
       Cookie: authCookies[ip] ? authCookies[ip] : ""
     }
   })
@@ -1097,7 +1086,7 @@ export function gatherDetailsFromEditVM(
       return extractVMDetails(vmObject, response.data, ip);
     })
     .catch((e) => {
-      console.log("Get VM Edit details for ip: " + ip + " Failed");
+      console.log(`Get VM Edit details for ip: ${ip} Failed`);
       if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
@@ -1198,9 +1187,9 @@ function getVMStaticData(data: string) {
 }
 
 function extractCPUDetails(data: string) {
-  let cpuDetails: string[] = [];
+  const cpuDetails: string[] = [];
   while (data.includes("for='vcpu")) {
-    let row = extractValue(data, "<label for='vcpu", "</label>");
+    const row = extractValue(data, "<label for='vcpu", "</label>");
     if (row.includes("checked")) {
       cpuDetails.push(extractValue(row, "value='", "'"));
     }
@@ -1210,39 +1199,31 @@ function extractCPUDetails(data: string) {
 }
 
 function extractDiskData(data: string) {
-  let disks: Disk[] = [];
+  const disks: Disk[] = [];
   while (data.includes('id="disk_')) {
-    let row = extractValue(data, 'id="disk_', ">");
-    let disk = extractValue(row, "", '"');
-    let diskselect = extractReverseValue(
-      extractValue(
-        data,
-        '<select name="disk[' + disk + '][select]"',
-        "selected>"
-      ),
+    const row = extractValue(data, 'id="disk_', ">");
+    const disk = extractValue(row, "", '"');
+    const diskselect = extractReverseValue(
+      extractValue(data, `<select name="disk[${disk}][select]"`, "selected>"),
       "'",
       "value='"
     );
-    let diskdriver = extractReverseValue(
-      extractValue(
-        data,
-        '<select name="disk[' + disk + '][driver]"',
-        "selected>"
-      ),
+    const diskdriver = extractReverseValue(
+      extractValue(data, `<select name="disk[${disk}][driver]"`, "selected>"),
       "'",
       "value='"
     );
-    let diskbus = extractReverseValue(
-      extractValue(data, '<select name="disk[' + disk + '][bus]"', "selected>"),
+    const diskbus = extractReverseValue(
+      extractValue(data, `<select name="disk[${disk}][bus]"`, "selected>"),
       "'",
       "value='"
     );
-    let disksize = extractValue(
+    const disksize = extractValue(
       data,
-      'name="disk[' + disk + '][size]" value="',
+      `name="disk[${disk}][size]" value="`,
       '"'
     );
-    let diskpath = extractValue(row, 'value="', '"');
+    const diskpath = extractValue(row, 'value="', '"');
     if (diskpath) {
       disks.push({
         select: diskselect,
@@ -1258,7 +1239,7 @@ function extractDiskData(data: string) {
 }
 
 function extractShareData(data: string) {
-  let shares: ShareData[] = [];
+  const shares: ShareData[] = [];
   data.replace(
     '<script type="text/html" id="tmplShare">\n' +
       '                                                                                <table class="domain_os other">\n' +
@@ -1268,8 +1249,8 @@ function extractShareData(data: string) {
   );
 
   while (data.includes("<td>Unraid Share:</td>")) {
-    let sourceRow = extractValue(data, "<td>Unraid Share:</td>", "</td>");
-    let targetRow = extractValue(data, "<td>Unraid Mount tag:</td>", "</td>");
+    const sourceRow = extractValue(data, "<td>Unraid Share:</td>", "</td>");
+    const targetRow = extractValue(data, "<td>Unraid Mount tag:</td>", "</td>");
     shares.push({
       source: extractValue(sourceRow, 'value="', '"'),
       target: extractValue(targetRow, 'value="', '"')
@@ -1280,10 +1261,10 @@ function extractShareData(data: string) {
 }
 
 function extractPCIData(data: string) {
-  let pcis: PCIData[] = [];
+  const pcis: PCIData[] = [];
   while (data.includes(' name="pci[]" id')) {
-    let row = extractValue(data, ' name="pci[]" id', "/>");
-    let device = {} as PCIData;
+    const row = extractValue(data, ' name="pci[]" id', "/>");
+    const device = {} as PCIData;
     device.name = extractValue(
       extractValue(data, ' name="pci[]" id', "/label>"),
       ">",
@@ -1307,8 +1288,8 @@ function extractIndividualGPU(
   data: string
 ) {
   while (gpuInfo.includes("<option value='")) {
-    let row = extractValue(gpuInfo, "<option value='", ">");
-    let gpu = {} as GPUData;
+    const row = extractValue(gpuInfo, "<option value='", ">");
+    const gpu = {} as GPUData;
     gpu.gpu = true;
     gpu.id = row.substring(0, row.indexOf("'"));
     gpu.name = extractValue(
@@ -1329,12 +1310,12 @@ function extractIndividualGPU(
       }
     }
 
-    let gpuModel = extractValue(data, "<td>Graphics Card:</td>", "</table>");
+    const gpuModel = extractValue(data, "<td>Graphics Card:</td>", "</table>");
     if (gpuModel.includes("<td>VNC Video Driver:</td>")) {
       gpu.model = extractReverseValue(
         extractValue(
           gpuModel,
-          '<select name="gpu[' + gpuNo + '][model]"',
+          `<select name="gpu[${gpuNo}][model]"`,
           "selected>"
         ),
         "'",
@@ -1343,7 +1324,7 @@ function extractIndividualGPU(
       gpu.keymap = extractReverseValue(
         extractValue(
           gpuModel,
-          '<select name="gpu[' + gpuNo + '][keymap]"',
+          `<select name="gpu[${gpuNo}][keymap]"`,
           "selected>"
         ),
         "'",
@@ -1368,7 +1349,7 @@ function extractIndividualGPU(
 function extractGPUData(response: string, vmObject) {
   let gpuNo = 0;
   while (response.includes("<td>Graphics Card:</td>")) {
-    let gpuInfo = extractValue(response, "<td>Graphics Card:</td>", "</td>");
+    const gpuInfo = extractValue(response, "<td>Graphics Card:</td>", "</td>");
     extractIndividualGPU(gpuInfo, gpuNo, vmObject, response);
     gpuNo++;
     response = response.replace("<td>Graphics Card:</td>", "");
@@ -1378,8 +1359,8 @@ function extractGPUData(response: string, vmObject) {
 function extractSoundData(response: string, vmObject) {
   let soundInfo = extractValue(response, "<td>Sound Card:</td>", "</td>");
   while (soundInfo.includes("<option value='")) {
-    let row = extractValue(soundInfo, "<option value='", ">");
-    let soundCard = {} as SoundData;
+    const row = extractValue(soundInfo, "<option value='", ">");
+    const soundCard = {} as SoundData;
     soundCard.sound = true;
     soundCard.name = extractValue(
       extractValue(soundInfo, "<option value='", "/option>"),
@@ -1402,18 +1383,18 @@ function extractNICInformation(data: string) {
     '<table data-category="Network" data-multiple="true"',
     "</table>"
   );
-  let nicNo = 0;
+  const nicNo = 0;
 
-  let nics: NicData[] = [];
+  const nics: NicData[] = [];
   while (nicInfo.includes("<td>Network MAC:</td>")) {
-    let nic = {} as NicData;
+    const nic = {} as NicData;
     nic.mac = extractValue(
       nicInfo,
-      'name="nic[' + nicNo + '][mac]" class="narrow" value="',
+      `name="nic[${nicNo}][mac]" class="narrow" value="`,
       '"'
     );
     nic.network = extractReverseValue(
-      extractValue(nicInfo, 'name="nic[' + nicNo + '][network]"', "selected>"),
+      extractValue(nicInfo, `name="nic[${nicNo}][network]"`, "selected>"),
       "'",
       "value='"
     );
@@ -1458,11 +1439,11 @@ export async function requestChange(
 ) {
   return axios({
     method: "POST",
-    url:
-      (ip.includes("http") ? ip : "http://" + ip) +
-      "/plugins/dynamix.vm.manager/templates/Custom.form.php",
+    url: `${
+      ip.includes("http") ? ip : `http://${ip}`
+    }/plugins/dynamix.vm.manager/templates/Custom.form.php`,
     headers: {
-      Authorization: "Basic " + auth,
+      Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
       Cookie: authCookies[ip] ? authCookies[ip] : ""
@@ -1475,7 +1456,7 @@ export async function requestChange(
       return response.data;
     })
     .catch((e) => {
-      console.log("Make Edit for ip: " + ip + " Failed");
+      console.log(`Make Edit for ip: ${ip} Failed`);
       if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
@@ -1493,7 +1474,7 @@ async function buildForm(
   create
 ) {
   let form = getStaticPart(vmObject, id, create);
-  form += "&csrf_token=" + (await getCSRFToken(ip, auth));
+  form += `&csrf_token=${await getCSRFToken(ip, auth)}`;
   form = getCPUPart(vmObject, form);
   form = getDiskPart(vmObject, form);
   form = getSharePart(vmObject, form);
@@ -1504,62 +1485,37 @@ async function buildForm(
 }
 
 export function getStaticPart(vmObject, id: string, create: boolean) {
-  return (
-    "template%5Bos%5D=" +
-    vmObject.template_os +
-    "template%5Bname%5D=" +
-    vmObject.template_name +
-    "template%5Bicon%5D=" +
-    vmObject.template_icon +
-    "&domain%5Bpersistent%5D=" +
-    vmObject.domain_persistent +
-    "&domain%5Btype%5D=" +
-    vmObject.domain_type +
-    "&domain%5Bautostart%5D=" +
-    1 +
-    "&domain%5Buuid%5D=" +
-    id +
-    "&domain%5Bclock%5D=" +
-    vmObject.domain_clock +
-    "&domain%5Boldname%5D=" +
-    vmObject.domain_oldname +
-    "&domain%5Bname%5D=" +
-    vmObject.domain_name +
-    "&domain%5Barch%5D=" +
-    vmObject.domain_arch +
-    "&domain%5Bdesc%5D=" +
-    vmObject.domain_desc +
-    "&domain%5Bcpumode%5D=" +
-    vmObject.domain_cpumode +
-    "&domain%5Bovmf%5D=" +
-    vmObject.domain_ovmf +
-    "&domain%5Bmem%5D=" +
-    vmObject.domain_mem +
-    "&domain%5Bmaxmem%5D=" +
-    vmObject.domain_maxmem +
-    "&domain%5Bmachine%5D=" +
-    vmObject.domain_machine +
-    "&domain%5Bhyperv%5D=" +
-    vmObject.domain_hyperv +
-    "&domain%5Busbmode%5D=" +
-    vmObject.domain_usbmode +
-    "&media%5Bcdrom%5D=" +
-    vmObject.media_cdrom + //todo is encodeURI needed for these 4?
-    "&media%5Bcdrombus%5D=" +
-    vmObject.media_cdrombus +
-    "&media%5Bdrivers%5D=" +
-    vmObject.media_drivers +
-    "&media%5Bdriversbus%5D=" +
-    vmObject.media_driversbus +
-    (create ? "&createvm=" + 1 : "&updatevm=" + 1) +
-    "&domain%5Bpassword%5D="
-  );
+  return `template%5Bos%5D=${vmObject.template_os}template%5Bname%5D=${
+    vmObject.template_name
+  }template%5Bicon%5D=${vmObject.template_icon}&domain%5Bpersistent%5D=${
+    vmObject.domain_persistent
+  }&domain%5Btype%5D=${
+    vmObject.domain_type
+  }&domain%5Bautostart%5D=${1}&domain%5Buuid%5D=${id}&domain%5Bclock%5D=${
+    vmObject.domain_clock
+  }&domain%5Boldname%5D=${vmObject.domain_oldname}&domain%5Bname%5D=${
+    vmObject.domain_name
+  }&domain%5Barch%5D=${vmObject.domain_arch}&domain%5Bdesc%5D=${
+    vmObject.domain_desc
+  }&domain%5Bcpumode%5D=${vmObject.domain_cpumode}&domain%5Bovmf%5D=${
+    vmObject.domain_ovmf
+  }&domain%5Bmem%5D=${vmObject.domain_mem}&domain%5Bmaxmem%5D=${
+    vmObject.domain_maxmem
+  }&domain%5Bmachine%5D=${vmObject.domain_machine}&domain%5Bhyperv%5D=${
+    vmObject.domain_hyperv
+  }&domain%5Busbmode%5D=${vmObject.domain_usbmode}&media%5Bcdrom%5D=${
+    vmObject.media_cdrom //todo is encodeURI needed for these 4?
+  }&media%5Bcdrombus%5D=${vmObject.media_cdrombus}&media%5Bdrivers%5D=${
+    vmObject.media_drivers
+  }&media%5Bdriversbus%5D=${vmObject.media_driversbus}${
+    create ? `&createvm=${1}` : `&updatevm=${1}`
+  }&domain%5Bpassword%5D=`;
 }
 
 export function getCPUPart(vmObject, form) {
   if (vmObject.vcpus && vmObject.vcpus.length > 0) {
     vmObject.vcpus.forEach((cpu) => {
-      form += "&domain%5Bvcpu%5D%5B%5D=" + cpu;
+      form += `&domain%5Bvcpu%5D%5B%5D=${cpu}`;
     });
   }
   return form;
@@ -1568,11 +1524,11 @@ export function getCPUPart(vmObject, form) {
 export function getDiskPart(vmObject, form) {
   if (vmObject.disks && vmObject.disks.length > 0) {
     vmObject.disks.forEach((disk, index) => {
-      form += "&disk%5B" + index + "%5D%5Bimage%5D=" + disk.image;
-      form += "&disk%5B" + index + "%5D%5Bselect%5D=" + disk.select;
-      form += "&disk%5B" + index + "%5D%5Bsize%5D=" + disk.size;
-      form += "&disk%5B" + index + "%5D%5Bdriver%5D=" + disk.driver;
-      form += "&disk%5B" + index + "%5D%5Bbus%5D=" + disk.bus;
+      form += `&disk%5B${index}%5D%5Bimage%5D=${disk.image}`;
+      form += `&disk%5B${index}%5D%5Bselect%5D=${disk.select}`;
+      form += `&disk%5B${index}%5D%5Bsize%5D=${disk.size}`;
+      form += `&disk%5B${index}%5D%5Bdriver%5D=${disk.driver}`;
+      form += `&disk%5B${index}%5D%5Bbus%5D=${disk.bus}`;
     });
   }
   return form;
@@ -1581,8 +1537,8 @@ export function getDiskPart(vmObject, form) {
 export function getSharePart(vmObject, form) {
   if (vmObject.shares && vmObject.shares.length > 0) {
     vmObject.shares.forEach((share, index) => {
-      form += "&shares%5B" + index + "%5D%5Bsource%5D=" + share.source;
-      form += "&shares%5B" + index + "%5D%5Btarget%5D=" + share.target;
+      form += `&shares%5B${index}%5D%5Bsource%5D=${share.source}`;
+      form += `&shares%5B${index}%5D%5Btarget%5D=${share.target}`;
     });
   }
   return form;
@@ -1598,28 +1554,24 @@ export function getPCIPart(vmObject, form) {
       }
 
       if (pciDevice.gpu && pciDevice.checked) {
-        form += "&gpu%5B" + gpus + "%5D%5Bid%5D=" + encodeURI(pciDevice.id);
-        form += "&gpu%5B" + gpus + "%5D%5Bmodel%5D=" + encodeURI("qxl");
-        form +=
-          "&gpu%5B" +
-          gpus +
-          "%5D%5Bkeymap%5D=" +
-          (pciDevice.keymap ? encodeURI(pciDevice.keymap) : "");
-        form +=
-          "&gpu%5B" +
-          gpus +
-          "%5D%5Bbios%5D=" +
-          (pciDevice.bios ? encodeURI(pciDevice.bios) : "");
+        form += `&gpu%5B${gpus}%5D%5Bid%5D=${encodeURI(pciDevice.id)}`;
+        form += `&gpu%5B${gpus}%5D%5Bmodel%5D=${encodeURI("qxl")}`;
+        form += `&gpu%5B${gpus}%5D%5Bkeymap%5D=${
+          pciDevice.keymap ? encodeURI(pciDevice.keymap) : ""
+        }`;
+        form += `&gpu%5B${gpus}%5D%5Bbios%5D=${
+          pciDevice.bios ? encodeURI(pciDevice.bios) : ""
+        }`;
         gpus++;
       } else if (pciDevice.audio && pciDevice.checked) {
-        form +=
-          "&audio%5B" + audioDevices + "%5D%5Bid%5D=" + encodeURI(pciDevice.id);
+        form += `&audio%5B${audioDevices}%5D%5Bid%5D=${encodeURI(
+          pciDevice.id
+        )}`;
         audioDevices++;
       } else {
-        form +=
-          "&pci%5B%5D=" +
-          encodeURI(pciDevice.id) +
-          (pciDevice.checked ? "" : "%23remove");
+        form += `&pci%5B%5D=${encodeURI(pciDevice.id)}${
+          pciDevice.checked ? "" : "%23remove"
+        }`;
       }
     });
   }
@@ -1629,10 +1581,9 @@ export function getPCIPart(vmObject, form) {
 export function getUSBPart(vmObject, form) {
   if (vmObject.usbs && vmObject.usbs.length > 0) {
     vmObject.usbs.forEach((usbDevice) => {
-      form +=
-        "&usb%5B%5D=" +
-        encodeURI(usbDevice.id) +
-        (usbDevice.checked ? "" : "%23remove");
+      form += `&usb%5B%5D=${encodeURI(usbDevice.id)}${
+        usbDevice.checked ? "" : "%23remove"
+      }`;
     });
   }
   return form;
@@ -1641,8 +1592,8 @@ export function getUSBPart(vmObject, form) {
 export function getNetworkPart(vmObject, form: string) {
   if (vmObject.nics && vmObject.nics.length > 0) {
     vmObject.nics.forEach((nicDevice, index) => {
-      form += "&nic%5B" + index + "%5D%5Bmac%5D=" + nicDevice.mac;
-      form += "&nic%5B" + index + "%5D%5Bnetwork%5D=" + nicDevice.network;
+      form += `&nic%5B${index}%5D%5Bmac%5D=${nicDevice.mac}`;
+      form += `&nic%5B${index}%5D%5Bnetwork%5D=${nicDevice.network}`;
     });
   }
   return form;
@@ -1672,7 +1623,7 @@ export function flipPCICheck(details, id: string) {
     });
 }
 
-let failed = {};
+const failed = {};
 
 function callSucceeded(ip: string) {
   failed[ip] = 0;
