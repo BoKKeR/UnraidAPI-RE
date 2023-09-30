@@ -6,9 +6,11 @@ module.exports = {
     "plugin:@typescript-eslint/recommended"
   ],
   root: true,
-  parser: "@typescript-eslint/parser",
+  parser: "vue-eslint-parser",
+  parserOptions: { parser: "@typescript-eslint/parser" },
   plugins: ["@typescript-eslint"],
   rules: {
+    "prefer-template": "warn",
     "vue/max-attributes-per-line": "off",
     "vue/html-indent": "off",
     "vue/html-self-closing": "off",
