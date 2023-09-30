@@ -25,10 +25,8 @@ import { enableVmFetching } from "./enableVmFetching";
 import { DockerAction, RootServerJSONConfig, Vm } from "~/types/server";
 import { enableDockerFetching } from "./enableDockerFetching";
 import extractUSBData from "./extractUsbData";
-
-const fetch = require("node-fetch");
-
-const FormData = require("form-data");
+import fetch from "node-fetch";
+import FormData from "form-data";
 
 axios.defaults.withCredentials = true;
 axios.defaults.httpsAgent = new https.Agent({
