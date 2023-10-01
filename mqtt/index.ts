@@ -206,7 +206,7 @@ export default function startMQTTClient() {
           client.publish(
             `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}`,
             JSON.stringify(vmDetailsToSend),
-            { retain: constants.MQTTRetain }
+            { retain: false }
           );
 
           responses.push(
@@ -219,7 +219,7 @@ export default function startMQTTClient() {
               dockerDetails.name
             )}`,
             JSON.stringify(dockerDetails),
-            { retain: constants.MQTTRetain }
+            { retain: false }
           );
           responses.push(
             await changeDockerState(
@@ -259,7 +259,7 @@ export default function startMQTTClient() {
             name: sanitise(usbDetails.name),
             connected: !!usbDetails.connected
           }),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
       } else if (topic.includes("array")) {
         let command = "start";
@@ -270,7 +270,7 @@ export default function startMQTTClient() {
         client.publish(
           `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
           JSON.stringify(serverDetails),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
         responses.push(await changeArrayState(command, ip, keys[ip], token));
       } else if (topic.includes("powerOff")) {
@@ -278,7 +278,7 @@ export default function startMQTTClient() {
         client.publish(
           `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
           JSON.stringify(serverDetails),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
         responses.push(
           await changeServerState("shutdown", ip, keys[ip], token)
@@ -288,7 +288,7 @@ export default function startMQTTClient() {
         client.publish(
           `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
           JSON.stringify(serverDetails),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
         responses.push(await changeServerState("reboot", ip, keys[ip], token));
       } else if (topic.includes("check")) {
@@ -297,7 +297,7 @@ export default function startMQTTClient() {
           client.publish(
             `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
             JSON.stringify(serverDetails),
-            { retain: constants.MQTTRetain }
+            { retain: false }
           );
           responses.push(await changeServerState("check", ip, keys[ip], token));
         } else {
@@ -305,7 +305,7 @@ export default function startMQTTClient() {
           client.publish(
             `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
             JSON.stringify(serverDetails),
-            { retain: constants.MQTTRetain }
+            { retain: false }
           );
           responses.push(
             await changeServerState("check-cancel", ip, keys[ip], token)
@@ -316,7 +316,7 @@ export default function startMQTTClient() {
         client.publish(
           `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
           JSON.stringify(serverDetails),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
         responses.push(await changeServerState("move", ip, keys[ip], token));
       } else if (topic.includes("sleep")) {
@@ -324,7 +324,7 @@ export default function startMQTTClient() {
         client.publish(
           `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
           JSON.stringify(serverDetails),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
         responses.push(await changeServerState("sleep", ip, keys[ip], token));
       }
@@ -492,7 +492,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         unique_id: `${serverTitleSanitised} unraid api server`,
         device: serverDevice
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.publish(
       `${process.env.MQTTBaseTopic}/switch/${serverTitleSanitised}/config`,
@@ -507,7 +507,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         device: serverDevice,
         command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/array`
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.subscribe(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/array`
@@ -525,7 +525,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         device: serverDevice,
         command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/powerOff`
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.subscribe(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/powerOff`
@@ -543,7 +543,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         device: serverDevice,
         command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/reboot`
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.subscribe(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/reboot`
@@ -561,7 +561,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         device: serverDevice,
         command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/check`
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.subscribe(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/check`
@@ -579,7 +579,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         device: serverDevice,
         command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/move`
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.subscribe(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/move`
@@ -590,7 +590,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
     client.publish(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
       JSON.stringify(server.serverDetails),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     updated[ip].details = JSON.stringify(server.serverDetails);
   }
@@ -696,7 +696,7 @@ function getVMDetails(
         },
         command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/state`
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.publish(
       `${process.env.MQTTBaseTopic}/sensor/${serverTitleSanitised}/${vmSanitisedName}/config`,
@@ -713,12 +713,12 @@ function getVMDetails(
           model: "VM"
         }
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.publish(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}`,
       JSON.stringify(vmDetails),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.subscribe(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/state`
@@ -774,7 +774,7 @@ function getVMDetails(
             },
             command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/${sanitiseUSBId}/attach`
           }),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
         client.publish(
           `${process.env.MQTTBaseTopic}/binary_sensor/${serverTitleSanitised}/${vmSanitisedName}_${sanitiseUSBId}/config`,
@@ -795,12 +795,12 @@ function getVMDetails(
               model: "USB Device"
             }
           }),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
         client.publish(
           `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/${sanitiseUSBId}`,
           JSON.stringify(usbDetails),
-          { retain: constants.MQTTRetain }
+          { retain: false }
         );
         client.subscribe(
           `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/${sanitiseUSBId}/attach`
@@ -863,12 +863,12 @@ function getDockerDetails(
         },
         command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${docker.name}/dockerState`
       }),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     client.publish(
       `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/${docker.name}`,
       JSON.stringify(docker),
-      { retain: constants.MQTTRetain }
+      { retain: false }
     );
     // publish restart container button
     client.publish(
