@@ -437,7 +437,8 @@ function sanitise(string: string) {
     .split(")")
     .join("")
     .split(":")
-    .join("_");
+    .join("_")
+    .trim();
 }
 
 function getServerDetails(client, servers, disabledDevices, ip, timer) {
