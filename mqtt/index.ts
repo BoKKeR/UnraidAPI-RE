@@ -556,7 +556,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         payload_not_available: false,
         value_template: "{{ value_json.parityCheckRunning }}",
         state_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}`,
-        name: `${serverTitleSanitised}_partityCheck`,
+        name: `${serverTitleSanitised}_parityCheck`,
         unique_id: `${serverTitleSanitised} unraid server parity check`,
         device: serverDevice,
         command_topic: `${process.env.MQTTBaseTopic}/${serverTitleSanitised}/check`
