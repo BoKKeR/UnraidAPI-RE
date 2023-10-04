@@ -11,6 +11,8 @@ import fs from "fs";
 import { attachUSB, detachUSB } from "../api/usbAttach";
 import uniqid from "uniqid";
 import sanitise from "./../utils/sanitiseName";
+import { ServerDetails, ServerJSONConfig, VmDetail } from "~/types/server";
+import { DockerDetail } from "~/types";
 
 let retry;
 
@@ -94,7 +96,7 @@ export default function startMQTTClient() {
 
       const topicParts = topic.split("/");
       let ip = "";
-      let serverDetails = {};
+      let serverDetails: Partial<ServerDetails> = {};
 
       let serverTitleSanitised;
       for (const [serverIp, server] of Object.entries(servers)) {
@@ -118,10 +120,10 @@ export default function startMQTTClient() {
       const token = await getCSRFToken(ip, keys[ip]);
 
       let vmIdentifier = "";
-      let vmDetails = {};
+      let vmDetails: Partial<VmDetail> = {};
       let vmSanitisedName = "";
       let dockerIdentifier = "";
-      let dockerDetails = {};
+      let dockerDetails: Partial<DockerDetail> = {};
 
       if (topicParts.length >= 3) {
         if (!topic.includes("docker") && serverDetails.vm) {
@@ -782,11 +784,11 @@ function getVMDetails(
 
 function getDockerDetails(
   client,
-  serverTitleSanitised,
-  disabledDevices,
+  serverTitleSanitised: string,
+  disabledDevices: any[],
   dockerId: string,
   ip: string,
-  server
+  server: ServerJSONConfig
 ) {
   if (disabledDevices.includes(`${ip}|${dockerId}`)) {
     return;
@@ -794,6 +796,7 @@ function getDockerDetails(
   if (!server?.docker?.details?.containers) {
     return;
   }
+
   const docker = server.docker.details.containers[dockerId];
   if (!docker) {
     return;

@@ -7,7 +7,7 @@ import { extractDiskDetails } from "./extractDiskDetails";
 import { extractValue } from "./extractValue";
 import {
   Disk,
-  Docker,
+  DockerDetail,
   GPUData,
   HDD,
   HDDAllocationInfo,
@@ -410,7 +410,7 @@ function processDockerResponse(details) {
   const containers = {};
   details.forEach((row) => {
     if (!row.content || !row.content.includes("undefined")) {
-      const docker: Partial<Docker> = {};
+      const docker: Partial<DockerDetail> = {};
       row.children.forEach((child, index) => {
         try {
           if (child.tags.class) {

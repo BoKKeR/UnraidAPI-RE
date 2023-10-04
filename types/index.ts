@@ -62,13 +62,40 @@ export type HDD = {
   used: string;
 };
 
-export type Docker = {
+export type DockerDetail = {
   imageUrl: string;
   name: string;
   status: string;
   containerId: string;
   tag: string;
   uptoDate: string;
+  imageId: string;
+  created: string;
+  details: {
+    containers: {
+      [key: string]: ContainerDetail;
+    };
+    images: {
+      [key: string]: ImageDetail;
+    };
+  };
+};
+
+export type ContainerStatus = "started" | "stopped";
+
+export type ContainerDetail = {
+  imageUrl: string;
+  name: string;
+  status: ContainerStatus;
+  containerId: string;
+  tag: string;
+};
+
+/* imageUrl: '/webGui/images/disk.png',
+imageId: '9c5683ec06a8',
+created: 'Created 2 months ago' */
+export type ImageDetail = {
+  imageUrl: string;
   imageId: string;
   created: string;
 };

@@ -1,4 +1,4 @@
-import { Disk, Docker, PCIData, UsbData } from ".";
+import { Disk, DockerDetail, PCIData, UsbData } from ".";
 
 export type DockerAction = "domain-start" | "domain-restart" | "domain-stop";
 
@@ -7,7 +7,7 @@ export interface RootServerJSONConfig {
 }
 
 export interface ServerJSONConfig {
-  docker?: Docker;
+  docker?: DockerDetail;
   serverDetails: ServerDetails;
   vm?: Vm;
   pciDetails?: PCIData[];
@@ -35,7 +35,7 @@ export interface DockerImage {
 }
 
 export type Containers = {
-  [key: string]: Docker;
+  [key: string]: DockerDetail;
 };
 
 export interface ServerDetails {
