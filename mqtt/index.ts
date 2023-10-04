@@ -331,7 +331,7 @@ export default function startMQTTClient() {
           success = false;
           console.log(`Part of ${queryID} failed.`);
         }
-        if (response && response.error) {
+        if (response?.error) {
           success = false;
           console.log(
             `Part of ${queryID} failed with response: ${response.error}`
