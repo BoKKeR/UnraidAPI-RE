@@ -645,11 +645,7 @@ function getVMDetails(
     updated[ip].vms = {};
   }
 
-  if (
-    !updated[ip].vms[vmId] ||
-    !updated[ip].vms[vmId].details ||
-    updated[ip].vms[vmId].details !== JSON.stringify(vmDetails)
-  ) {
+  if (updated[ip].vms[vmId]?.details !== JSON.stringify(vmDetails)) {
     client.publish(
       `${process.env.MQTTBaseTopic}/switch/${serverTitleSanitised}/${vmSanitisedName}/config`,
       JSON.stringify({
@@ -794,12 +790,7 @@ function getDockerDetails(
   if (disabledDevices.includes(`${ip}|${dockerId}`)) {
     return;
   }
-  if (
-    !server ||
-    !server.docker ||
-    !server.docker.details ||
-    !server.docker.details.containers
-  ) {
+  if (!server?.docker?.details?.containers) {
     return;
   }
   const docker = server.docker.details.containers[dockerId];
