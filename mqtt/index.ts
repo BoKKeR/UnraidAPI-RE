@@ -66,7 +66,8 @@ export default function startMQTTClient() {
     );
 
     client.on("message", async (topic: string, message: string) => {
-      const queryID = await uniqid.time("MQTT-R-", "");
+      const queryID = uniqid.time("MQTT-R-", "");
+
       console.log(
         `Received MQTT Topic: ${topic} and Message: ${message} assigning ID: ${queryID}`
       );
