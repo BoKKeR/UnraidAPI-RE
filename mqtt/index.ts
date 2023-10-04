@@ -10,6 +10,7 @@ import {
 import fs from "fs";
 import { attachUSB, detachUSB } from "../api/usbAttach";
 import uniqid from "uniqid";
+import sanitise from "~/utils/sanitiseName";
 
 let retry;
 
@@ -160,17 +161,7 @@ export default function startMQTTClient() {
               command = "domain-start";
             }
             break;
-          case '"started"':
-            if (
-              vmDetails.status === "paused" ||
-              vmDetails.status === "pmsuspended" ||
-              dockerDetails.status === "paused"
-            ) {
-              command = "domain-resume";
-            } else {
-              command = "domain-start";
-            }
-            break;
+
           case "stopped":
             command = "domain-stop";
             break;
@@ -441,25 +432,6 @@ function mqttRepeat(client) {
     },
     process.env.MQTTRefreshRate ? process.env.MQTTRefreshRate * 1000 : 20000
   );
-}
-
-function sanitise(string: string) {
-  if (!string) {
-    return "";
-  }
-  return string
-    .toLowerCase()
-    .split(" ")
-    .join("_")
-    .split(".")
-    .join("")
-    .split("(")
-    .join("")
-    .split(")")
-    .join("")
-    .split(":")
-    .join("_")
-    .trim();
 }
 
 function getServerDetails(client, servers, disabledDevices, ip, timer) {
