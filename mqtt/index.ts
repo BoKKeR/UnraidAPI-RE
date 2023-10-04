@@ -10,7 +10,7 @@ import {
 import fs from "fs";
 import { attachUSB, detachUSB } from "../api/usbAttach";
 import uniqid from "uniqid";
-import sanitise from "~/utils/sanitiseName";
+import sanitise from "./../utils/sanitiseName";
 
 let retry;
 
