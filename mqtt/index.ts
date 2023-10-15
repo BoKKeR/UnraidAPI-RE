@@ -725,10 +725,8 @@ function getVMDetails(
             name: `USB_${sanitiseUSBName}`,
             unique_id: `${serverTitleSanitised}_${vmId}_${sanitiseUSBId}`,
             device: {
-              identifiers: [
-                `${serverTitleSanitised}_${vmSanitisedName}_${sanitiseUSBId}`
-              ],
-              name: `${serverTitleSanitised}_VM_${vmSanitisedName}_USB_${sanitiseUSBId}`,
+              identifiers: [`${serverTitleSanitised}_${vmSanitisedName}`],
+              name: `${serverTitleSanitised}_VM_${vmSanitisedName}`,
               manufacturer: sanitiseUSBName,
               model: "USB Device"
             },
@@ -747,10 +745,8 @@ function getVMDetails(
             name: `VM_USB_${sanitiseUSBName}_connected`,
             unique_id: `${serverTitleSanitised}_${vmId}_${sanitiseUSBId}_connected`,
             device: {
-              identifiers: [
-                `${serverTitleSanitised}_${vmSanitisedName}_${sanitiseUSBId}`
-              ],
-              name: `${serverTitleSanitised}_VM_${vmSanitisedName}_USB_${sanitiseUSBId}`,
+              identifiers: [`${serverTitleSanitised}_${vmSanitisedName}`],
+              name: `${serverTitleSanitised}_VM_${vmSanitisedName}`,
               manufacturer: sanitiseUSBName,
               model: "USB Device"
             }
