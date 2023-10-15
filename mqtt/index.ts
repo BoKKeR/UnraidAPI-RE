@@ -1,4 +1,4 @@
-import mqtt from "mqtt";
+import { connect } from "mqtt";
 import {
   changeArrayState,
   changeDockerState,
@@ -47,7 +47,7 @@ export default function startMQTTClient() {
       host: env.MQTTBroker,
       rejectUnauthorized: process.env.MQTTSelfSigned !== "true"
     };
-    const client = mqtt.connect(
+    const client = connect(
       process.env.MQTTSecure === "true"
         ? "mqtts://"
         : `mqtt://${env.MQTTBroker}`,
