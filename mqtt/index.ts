@@ -464,7 +464,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         value_template: "{{ value_json.on }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}`,
         json_attributes_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}`,
-        name: `${serverTitleSanitised}_server`,
+        name: `server`,
         unique_id: `${serverTitleSanitised} unraid api server`,
         device: serverDevice
       }),
@@ -478,7 +478,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         value_template: "{{ value_json.arrayStatus }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}`,
         json_attributes_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}`,
-        name: `${serverTitleSanitised}_array`,
+        name: `array`,
         unique_id: `${serverTitleSanitised} unraid api array`,
         device: serverDevice,
         command_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/array`
@@ -494,7 +494,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         payload_not_available: false,
         value_template: "{{ value_json.on }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}`,
-        name: `${serverTitleSanitised}_power_off`,
+        name: `power_off`,
         unique_id: `${serverTitleSanitised} unraid server power off`,
         device: serverDevice,
         command_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/powerOff`
@@ -510,7 +510,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         payload_not_available: false,
         value_template: "{{ value_json.on }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}`,
-        name: `${serverTitleSanitised}_reboot`,
+        name: `reboot`,
         unique_id: `${serverTitleSanitised} unraid server reboot`,
         device: serverDevice,
         command_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/reboot`
@@ -526,7 +526,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         payload_not_available: false,
         value_template: "{{ value_json.parityCheckRunning }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}`,
-        name: `${serverTitleSanitised}_parityCheck`,
+        name: `parityCheck`,
         unique_id: `${serverTitleSanitised} unraid server parity check`,
         device: serverDevice,
         command_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/check`
@@ -542,7 +542,7 @@ function getServerDetails(client, servers, disabledDevices, ip, timer) {
         payload_not_available: false,
         value_template: "{{ value_json.moverRunning }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}`,
-        name: `${serverTitleSanitised}_mover`,
+        name: `mover`,
         unique_id: `${serverTitleSanitised} unraid server mover`,
         device: serverDevice,
         command_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/move`
@@ -646,7 +646,7 @@ function getVMDetails(
         value_template: "{{ value_json.status }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}`,
         json_attributes_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}`,
-        name: `${serverTitleSanitised}_VM_${vmSanitisedName}`,
+        name: `VM`,
         unique_id: `${serverTitleSanitised}_${vmId}`,
         device: {
           identifiers: [`${serverTitleSanitised}_${vmSanitisedName}`],
@@ -664,7 +664,7 @@ function getVMDetails(
         value_template: "{{ value_json.status }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}`,
         json_attributes_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}`,
-        name: `${serverTitleSanitised}_VM_${vmSanitisedName}_status`,
+        name: `VM_status`,
         unique_id: `${serverTitleSanitised}_${vmId}_status`,
         device: {
           identifiers: [`${serverTitleSanitised}_${vmSanitisedName}`],
@@ -722,7 +722,7 @@ function getVMDetails(
             value_template: "{{ value_json.attached }}",
             state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/${sanitiseUSBId}`,
             json_attributes_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/${sanitiseUSBId}`,
-            name: `${serverTitleSanitised}_VM_${vmSanitisedName}_USB_${sanitiseUSBName}`,
+            name: `USB_${sanitiseUSBName}`,
             unique_id: `${serverTitleSanitised}_${vmId}_${sanitiseUSBId}`,
             device: {
               identifiers: [
@@ -744,7 +744,7 @@ function getVMDetails(
             value_template: "{{ value_json.connected }}",
             state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/${sanitiseUSBId}`,
             json_attributes_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${vmSanitisedName}/${sanitiseUSBId}`,
-            name: `${serverTitleSanitised}_VM_${vmSanitisedName}_USB_${sanitiseUSBName}_connected`,
+            name: `VM_USB_${sanitiseUSBName}_connected`,
             unique_id: `${serverTitleSanitised}_${vmId}_${sanitiseUSBId}_connected`,
             device: {
               identifiers: [
@@ -809,7 +809,7 @@ function getDockerDetails(
         value_template: "{{ value_json.status }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${docker.name}`,
         json_attributes_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${docker.name}`,
-        name: `${serverTitleSanitised}_docker_${docker.name}`,
+        name: `docker_${docker.name}`,
         unique_id: `${serverTitleSanitised}_${docker.name}`,
         device: {
           identifiers: [serverTitleSanitised],
@@ -835,7 +835,7 @@ function getDockerDetails(
         value_template: "{{ value_json.status }}",
         state_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${docker.name}`,
         json_attributes_topic: `${env.MQTTBaseTopic}/${serverTitleSanitised}/${docker.name}`,
-        name: `${serverTitleSanitised}_docker_${docker.name}_restart`,
+        name: `docker_${docker.name}_restart`,
         unique_id: `${serverTitleSanitised}_${docker.name}_restart`,
         payload_press: "restart",
         device: {
