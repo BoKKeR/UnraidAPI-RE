@@ -30,7 +30,7 @@ export const extractServerDetails = (data: Buffer) => {
       .contents()
       .first()
       .text(),
-    version: extractValue(stringData, "Version: ", "&nbsp;")
+    version: $("unraid-user-profile").attr("server")?.match(/"osVersion":"(.*?)"/)?.[1] || ""
   };
 
   return details;
