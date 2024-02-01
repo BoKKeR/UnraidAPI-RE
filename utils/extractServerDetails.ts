@@ -30,7 +30,10 @@ export const extractServerDetails = (data: Buffer) => {
       .contents()
       .first()
       .text(),
-    version: extractValue(stringData, "Version: ", "&nbsp;")
+    version:
+      extractValue(stringData, "Version: ", "&nbsp;").length < 10
+        ? extractValue(stringData, "Version: ", "&nbsp;")
+        : ""
   };
 
   return details;

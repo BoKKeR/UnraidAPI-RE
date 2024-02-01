@@ -11,22 +11,43 @@ const result = {
   version: process.env.UNRAID_VERSION
 };
 
-test("Tests against extracted version html", () => {
-  const buffer = fs.readFileSync(
-    `./unraid-versions/${process.env.UNRAID_VERSION}/dashboard.html`
-  );
+const buffer = fs.readFileSync(
+  `./unraid-versions/${process.env.UNRAID_VERSION}/dashboard.html`
+);
+
+test("Test version extraction", () => {
+  const input = extractServerDetails(buffer);
+  expect(input.version).toBe(result.version);
+});
+
+test("Test CPU extraction", () => {
+  const input = extractServerDetails(buffer);
+  expect(input.cpu).toBe(result.cpu);
+});
+
+test("Test memory extraction", () => {
+  const input = extractServerDetails(buffer);
+  expect(input.memory).toBe(result.memory);
+});
+
+test("Test motherboard extraction", () => {
+  const input = extractServerDetails(buffer);
+  expect(input.motherboard).toBe(result.motherboard);
+});
+
+test("Test disk space extraction", () => {
+  const input = extractServerDetails(buffer);
+  const diskSpaceRegex = /^\d+.?\d+ [A-Z]+ used of \d+.?\d? [A-Z]+ \([^)]*\)$/i;
+  expect(input.diskSpace).toMatch(diskSpaceRegex);
+});
+
+test("Test cache space extraction", () => {
+  const input = extractServerDetails(buffer);
+  const diskSpaceRegex = /^\d+.?\d+ [A-Z]+ used of \d+.?\d? [A-Z]+ \([^)]*\)$/i;
+  expect(input.cacheSpace).toMatch(diskSpaceRegex);
+});
+
+test("Test title extraction", () => {
   const input = extractServerDetails(buffer);
   expect(input.title).toBe(result.title);
-  expect(input.cpu).toBe(result.cpu);
-  expect(input.memory).toBe(result.memory);
-  expect(input.version).toBe(result.version);
-
-  expect(input.motherboard).toBe(result.motherboard);
-
-  const diskSpaceRegex = /^\d+.?\d+ [A-Z]+ used of \d+.?\d? [A-Z]+ \([^)]*\)$/i;
-  // https://regex-generator.olafneumann.org/
-
-  expect(input.cacheSpace).toMatch(diskSpaceRegex);
-  expect(input.diskSpace).toMatch(diskSpaceRegex);
-  expect(input.motherboard).toBe(result.motherboard);
 });
