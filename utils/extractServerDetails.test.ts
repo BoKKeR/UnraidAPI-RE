@@ -8,11 +8,13 @@ const result = {
   motherboard: "ASUS ASUSTeK COMPUTER INC. , Version Rev 2802",
   diskSpace: "815 MB used of 107 GB (0.8 %)",
   cacheSpace: "23.1 GB used of 53.7 GB (43.0 %)",
-  version: "6.12.3"
+  version: process.env.UNRAID_VERSION
 };
 
 test("Tests against extracted 6.12 version html", () => {
-  const buffer = fs.readFileSync("./unraid-versions/6.12/dashboard.html");
+  const buffer = fs.readFileSync(
+    `./unraid-versions/${process.env.UNRAID_VERSION}/dashboard.html`
+  );
   const input = extractServerDetails(buffer);
   expect(input.title).toBe(result.title);
   expect(input.cpu).toBe(result.cpu);

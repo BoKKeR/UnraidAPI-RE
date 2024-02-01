@@ -7,7 +7,9 @@ const result = {
 };
 
 test("Tests against extracted 6.12 version html for usb", () => {
-  const buffer = fs.readFileSync("./unraid-versions/6.12/updateVM.html");
+  const buffer = fs.readFileSync(
+    `./unraid-versions/${process.env.UNRAID_VERSION}/updateVM.html`
+  );
   const input = extractUsbDetails(buffer.toString());
   expect(input).toMatchObject(result);
 });

@@ -18,10 +18,10 @@ const result = [
 
 test("Tests against extracted 6.12 version html", () => {
   const responseBuffer = fs.readFileSync(
-    "./unraid-versions/6.12/updateVM.html"
+    `./unraid-versions/${process.env.UNRAID_VERSION}/updateVM.html`
   );
   const vmObjectBuffer = fs.readFileSync(
-    "./unraid-versions/6.12/vmObject.json"
+    `./unraid-versions/${process.env.UNRAID_VERSION}/vmObject.json`
   );
 
   const vmObject = JSON.parse(vmObjectBuffer.toString());
