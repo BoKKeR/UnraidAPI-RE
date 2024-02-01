@@ -11,7 +11,7 @@ const result = {
   version: process.env.UNRAID_VERSION
 };
 
-test("Tests against extracted 6.12 version html", () => {
+test("Tests against extracted version html", () => {
   const buffer = fs.readFileSync(
     `./unraid-versions/${process.env.UNRAID_VERSION}/dashboard.html`
   );

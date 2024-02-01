@@ -1,7 +1,7 @@
 import fs from "fs";
 import { enableVmFetching } from "./enableVmFetching";
 
-test("Tests against extracted 6.12 version with no VM tab", () => {
+test("Tests against extracted version with no VM tab", () => {
   const responseBuffer = fs.readFileSync(
     `./unraid-versions/${process.env.UNRAID_VERSION}/dashboardVmDockerDisabled.html`
   );
@@ -11,7 +11,7 @@ test("Tests against extracted 6.12 version with no VM tab", () => {
   expect(result).toBe(false);
 });
 
-test("Tests against extracted 6.12 version html with VM tab", () => {
+test("Tests against extracted version html with VM tab", () => {
   const responseBuffer = fs.readFileSync(
     `./unraid-versions/${process.env.UNRAID_VERSION}/dashboard.html`
   );

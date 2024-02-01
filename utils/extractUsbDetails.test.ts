@@ -6,7 +6,7 @@ const result = {
   name: "Genesys Logic SD Card Reader and Writer"
 };
 
-test("Tests against extracted 6.12 version html for usb", () => {
+test("Tests against extracted version html for usb", () => {
   const buffer = fs.readFileSync(
     `./unraid-versions/${process.env.UNRAID_VERSION}/updateVM.html`
   );

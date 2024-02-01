@@ -1,7 +1,7 @@
 import fs from "fs";
 import extractCsrfToken from "./extractCsrfToken";
 
-test("Tests against extracted 6.12 version html", () => {
+test("Tests against extracted version html", () => {
   const responseBuffer = fs.readFileSync(
     `./unraid-versions/${process.env.UNRAID_VERSION}/dashboard.html`
   );
