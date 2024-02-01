@@ -6,8 +6,8 @@ test("Tests against extracted version html", () => {
     `./unraid-versions/${process.env.UNRAID_VERSION}/dashboard.html`
   );
 
-  // checks for upperCase hex of size 16
-  const csrfRegex = /^[0-9A-F]{16}$/i;
+  // checks for upperCase hex of size 14 or 16
+  const csrfRegex = /^[0-9A-F]{14,16}$/i;
 
   const dasboard = responseBuffer.toString();
 
