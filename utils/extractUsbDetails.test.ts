@@ -1,5 +1,6 @@
 import fs from "fs";
 import { extractUsbDetails } from "./extractUsbDetails";
+import isEqual from "./isEqual";
 
 const result = [
   {
@@ -19,16 +20,3 @@ test("Tests against extracted version html for usb", () => {
   const inputObj = extractUsbDetails(buffer.toString());
   expect(result.some((resultObj) => isEqual(inputObj, resultObj))).toBeTruthy();
 });
-
-function isEqual(objA: any, objB: any): boolean {
-  const keysA = Object.keys(objA);
-  const keysB = Object.keys(objB);
-
-  if (keysA.length !== keysB.length) return false;
-
-  for (const key of keysA) {
-    if (objA[key] !== objB[key]) return false;
-  }
-
-  return true;
-}

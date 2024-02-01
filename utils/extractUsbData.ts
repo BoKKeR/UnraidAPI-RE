@@ -7,9 +7,9 @@ import * as cheerio from "cheerio";
 function extractUSBData(data: string, vmObject: VMData, ip: string) {
   writeTestFile(JSON.stringify(vmObject), "vmObject.json");
 
-  let usbs: UsbData[] = [];
+  const usbs: UsbData[] = [];
 
-  let usbInfo = extractValue(data, "<td>USB Devices:</td>", "</td>");
+  const usbInfo = extractValue(data, "<td>USB Devices:</td>", "</td>");
   const $ = cheerio.load(usbInfo, null, false);
 
   $("label").map((index, elm) => {
