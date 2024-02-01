@@ -5,7 +5,7 @@ export const extractServerDetails = (data: Buffer) => {
   const $ = cheerio.load(data);
 
   const stringData = data.toString();
-  let details = {
+  const details = {
     title: extractValue(stringData, "title>", "/"),
     cpu: $('#db-box1 > [title="Processor Information"] > tr:nth-child(2) > td')
       .contents()
