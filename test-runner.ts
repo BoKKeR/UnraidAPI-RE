@@ -12,12 +12,12 @@ const main = async () => {
   const files = fs.readdirSync(directoryPath);
 
   if (testFolderParam) {
-    testVersion(testFolderParam);
+    await testVersion(testFolderParam);
   } else {
     // Assuming each folder name is a valid environment variable
     for (const folder of files) {
       // Set environment variable based on folder name
-      testVersion(folder);
+      await testVersion(folder);
     }
   }
 };
