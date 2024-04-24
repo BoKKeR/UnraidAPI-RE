@@ -14,12 +14,11 @@ import sanitise from "./../utils/sanitiseName";
 import {
   DockerAction,
   RootServerJSONConfig,
-  ServerDetails,
   ServerJSONConfig,
   VMAction,
   VmDetail
 } from "~/types/server";
-import { DockerDetail } from "~/types/json-server";
+import { DockerDetail, UsbData } from "~/types/json-server";
 import env from "./../constants/env";
 
 let retry;
@@ -157,8 +156,6 @@ export default function startMQTTClient() {
       }
 
       const responses = [];
-
-      console.log(updated);
 
       if (topic.toLowerCase().includes("state")) {
         let command: DockerAction | VMAction;
@@ -395,7 +392,6 @@ function updateMQTT(client) {
       fs.readFileSync("config/servers.json").toString()
     );
     globalState = servers;
-    console.log(globalState);
 
     let disabledDevices = [];
     try {
@@ -409,8 +405,8 @@ function updateMQTT(client) {
 
     const timer = 1000;
     let currentTimer = timer;
-    // getServerDetails(client, servers, null, serverIp, 1000); // calls
-    const serverIp = Object.keys(servers).forEach((ip) => {
+
+    Object.keys(servers).forEach((ip) => {
       setTimeout(() => {
         getServerDetails(
           client,
@@ -438,23 +434,19 @@ let repeater;
 let count = 0;
 
 function mqttRepeat(client) {
-  repeater = setTimeout(
-    () => {
-      count++;
-      if (
-        count >
-        (60 /
-          (process.env.MQTTRefreshRate ? process.env.MQTTRefreshRate : 20)) *
-          (process.env.MQTTCacheTime ? process.env.MQTTCacheTime : 60)
-      ) {
-        count = 0;
-        updated = {};
-      }
-      updateMQTT(client);
-      mqttRepeat(client);
-    },
-    process.env.MQTTRefreshRate ? process.env.MQTTRefreshRate * 1000 : 20000
-  );
+  const { MQTTRefreshRate, MQTTCacheTime } = env;
+
+  const repeater = setTimeout(() => {
+    count++;
+
+    if (count > (60 / MQTTRefreshRate) * MQTTCacheTime) {
+      count = 0;
+      updated = {};
+    }
+
+    updateMQTT(client);
+    mqttRepeat(client);
+  }, MQTTRefreshRate * 1000);
 }
 
 function getServerDetails(client, servers, disabledDevices, ip: string, timer) {
@@ -720,7 +712,7 @@ function getVMDetails(
       const sanitiseUSBName = sanitise(device.name);
       const sanitiseUSBId = sanitise(device.id);
 
-      const usbDetails = {};
+      const usbDetails: UsbData = {};
       usbDetails.name = sanitiseUSBName;
       usbDetails.attached = !!device.checked;
       usbDetails.id = device.id;

@@ -12,9 +12,10 @@ export type ShareData = {
 };
 
 export type UsbData = {
-  id: string;
-  name: string;
-  connected: boolean;
+  id?: string;
+  attached?: boolean;
+  name?: string;
+  connected?: boolean;
   checked?: boolean;
 };
 
