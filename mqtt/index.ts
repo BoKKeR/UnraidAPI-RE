@@ -26,6 +26,8 @@ let retry;
 
 let updated = {};
 
+let globalState = {};
+
 export default function startMQTTClient() {
   try {
     const haOptions = JSON.parse(
@@ -43,9 +45,9 @@ export default function startMQTTClient() {
   }
 
   try {
-    getServerDetails = getServerDetails.bind(this);
-    getVMDetails = getVMDetails.bind(this);
-    getDockerDetails = getDockerDetails.bind(this);
+    // getServerDetails = getServerDetails.bind(this);
+    // getVMDetails = getVMDetails.bind(this);
+    // getDockerDetails = getDockerDetails.bind(this);
 
     const options = {
       username: process.env.MQTTUser,
@@ -393,34 +395,40 @@ function updateMQTT(client) {
         )
         .toString()
     );
-    const servers = JSON.parse(
+    const servers: RootServerJSONConfig = JSON.parse(
       fs.readFileSync("config/servers.json").toString()
     );
+    globalState = servers;
+    console.log(globalState);
+
     let disabledDevices = [];
     try {
       disabledDevices = JSON.parse(
         fs.readFileSync("config/mqttDisabledDevices.json").toString()
       );
-    } catch (e) {}
+    } catch (e) {
+      console.log(e);
+    }
     getUnraidDetails(servers, keys);
 
-    let timer = 1000;
-    Object.keys(servers).forEach((ip) => {
-      setTimeout(
-        getServerDetails,
-        timer,
-        client,
-        servers,
-        disabledDevices,
-        ip,
-        timer
-      );
-      timer =
-        timer +
+    const timer = 1000;
+    let currentTimer = timer;
+    // getServerDetails(client, servers, null, serverIp, 1000); // calls
+    const serverIp = Object.keys(servers).forEach((ip) => {
+      setTimeout(() => {
+        getServerDetails(
+          client,
+          servers,
+          disabledDevices,
+          ip,
+          currentTimer // Pass the currentTimer value
+        );
+      }, currentTimer);
+
+      currentTimer +=
         (process.env.MQTTRefreshRate
-          ? process.env.MQTTRefreshRate * 1000
-          : 20000) /
-          4;
+          ? +process.env.MQTTRefreshRate * 1000
+          : 20000) / 4;
     });
   } catch (e) {
     console.log(e);
@@ -435,7 +443,7 @@ let count = 0;
 
 function mqttRepeat(client) {
   repeater = setTimeout(
-    function() {
+    () => {
       count++;
       if (
         count >
@@ -577,17 +585,17 @@ function getServerDetails(client, servers, disabledDevices, ip: string, timer) {
   if (server.vm?.details && !disabledDevices.includes(`${ip}|VMs`)) {
     Object.keys(server.vm.details).forEach((vmId) => {
       const vm = server.vm.details[vmId];
-      setTimeout(
-        getVMDetails,
-        timer,
-        client,
-        vm,
-        disabledDevices,
-        vmId,
-        serverTitleSanitised,
-        ip,
-        server
-      );
+      setTimeout(() => {
+        getVMDetails(
+          client,
+          vm,
+          disabledDevices,
+          vmId,
+          serverTitleSanitised,
+          ip,
+          server
+        );
+      }, timer);
       timer =
         timer +
         (process.env.MQTTRefreshRate
@@ -599,16 +607,16 @@ function getServerDetails(client, servers, disabledDevices, ip: string, timer) {
 
   if (server.docker?.details && !disabledDevices.includes(`${ip}|Dockers`)) {
     Object.keys(server.docker.details.containers).forEach((dockerId) => {
-      setTimeout(
-        getDockerDetails,
-        timer,
-        client,
-        serverTitleSanitised,
-        disabledDevices,
-        dockerId,
-        ip,
-        server
-      );
+      setTimeout(() => {
+        getDockerDetails(
+          client,
+          serverTitleSanitised,
+          disabledDevices,
+          dockerId,
+          ip,
+          server
+        );
+      }, timer);
       timer =
         timer +
         (process.env.MQTTRefreshRate
