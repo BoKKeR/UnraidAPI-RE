@@ -7,5 +7,6 @@ export default {
     : 20,
   MQTTCacheTime: process.env.MQTTCacheTime
     ? parseInt(process.env.MQTTCacheTime)
-    : 60
+    : 60,
+  KeyStorage: process.env.KeyStorage || "secure"
 };

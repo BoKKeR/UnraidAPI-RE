@@ -25,7 +25,7 @@ let retry;
 
 let updated = {};
 
-let globalState = {};
+const keyPath = `${env.KeyStorage}/mqttKeys`;
 
 export default function startMQTTClient() {
   try {
@@ -86,15 +86,7 @@ export default function startMQTTClient() {
         return;
       }
 
-      const keys = JSON.parse(
-        fs
-          .readFileSync(
-            `${
-              process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
-            }mqttKeys`
-          )
-          .toString()
-      );
+      const keys = JSON.parse(fs.readFileSync(keyPath).toString());
       const servers: RootServerJSONConfig = JSON.parse(
         fs.readFileSync("config/servers.json").toString()
       );
@@ -376,22 +368,11 @@ export default function startMQTTClient() {
 }
 
 function updateMQTT(client) {
-  console.log("updateMqtt");
-
   try {
-    const keys = JSON.parse(
-      fs
-        .readFileSync(
-          `${
-            process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
-          }mqttKeys`
-        )
-        .toString()
-    );
+    const keys = JSON.parse(fs.readFileSync(keyPath).toString());
     const servers: RootServerJSONConfig = JSON.parse(
       fs.readFileSync("config/servers.json").toString()
     );
-    globalState = servers;
 
     let disabledDevices = [];
     try {
@@ -449,7 +430,13 @@ function mqttRepeat(client) {
   }, MQTTRefreshRate * 1000);
 }
 
-function getServerDetails(client, servers, disabledDevices, ip: string, timer) {
+function getServerDetails(
+  client,
+  servers: RootServerJSONConfig,
+  disabledDevices,
+  ip: string,
+  timer
+) {
   const server = servers[ip];
   if (!server.serverDetails || disabledDevices.includes(ip)) {
     return;
@@ -605,12 +592,8 @@ function getServerDetails(client, servers, disabledDevices, ip: string, timer) {
           server
         );
       }, timer);
-      timer =
-        timer +
-        (process.env.MQTTRefreshRate
-          ? +process.env.MQTTRefreshRate * 1000
-          : 20000) /
-          20;
+
+      timer += (env.MQTTRefreshRate * 1000) / 20;
     });
   }
 }
