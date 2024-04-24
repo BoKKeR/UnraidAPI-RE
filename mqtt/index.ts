@@ -45,10 +45,6 @@ export default function startMQTTClient() {
   }
 
   try {
-    // getServerDetails = getServerDetails.bind(this);
-    // getVMDetails = getVMDetails.bind(this);
-    // getDockerDetails = getDockerDetails.bind(this);
-
     const options = {
       username: process.env.MQTTUser,
       password: process.env.MQTTPass,

@@ -36,7 +36,7 @@ axios.defaults.httpsAgent = new https.Agent({
 
 const authCookies = {};
 
-export async function getImage(servers, res, path) {
+export async function getImage(servers: RootServerJSONConfig, res, path) {
   const serverAuth = JSON.parse(
     fs
       .readFileSync(
