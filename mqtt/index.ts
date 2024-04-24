@@ -571,12 +571,7 @@ function getServerDetails(
           server
         );
       }, timer);
-      timer =
-        timer +
-        (process.env.MQTTRefreshRate
-          ? +process.env.MQTTRefreshRate * 1000
-          : 20000) /
-          20;
+      timer += (env.MQTTRefreshRate * 1000) / 20;
     });
   }
 
