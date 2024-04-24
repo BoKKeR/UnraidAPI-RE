@@ -11,8 +11,15 @@ import fs from "fs";
 import { attachUSB, detachUSB } from "../api/usbAttach";
 import uniqid from "uniqid";
 import sanitise from "./../utils/sanitiseName";
-import { ServerDetails, ServerJSONConfig, VmDetail } from "~/types/server";
-import { DockerDetail } from "~/types";
+import {
+  DockerAction,
+  RootServerJSONConfig,
+  ServerDetails,
+  ServerJSONConfig,
+  VMAction,
+  VmDetail
+} from "~/types/server";
+import { DockerDetail } from "~/types/json-server";
 import env from "./../constants/env";
 
 let retry;
@@ -91,15 +98,15 @@ export default function startMQTTClient() {
           )
           .toString()
       );
-      const servers = JSON.parse(
+      const servers: RootServerJSONConfig = JSON.parse(
         fs.readFileSync("config/servers.json").toString()
       );
 
       const topicParts = topic.split("/");
       let ip = "";
-      let serverDetails: Partial<ServerDetails> = {};
+      let serverDetails: Partial<ServerJSONConfig> = {};
 
-      let serverTitleSanitised;
+      let serverTitleSanitised: string;
       for (const [serverIp, server] of Object.entries(servers)) {
         if (
           server.serverDetails &&
@@ -127,8 +134,9 @@ export default function startMQTTClient() {
       let dockerDetails: Partial<DockerDetail> = {};
 
       if (topicParts.length >= 3) {
-        if (!topic.includes("docker") && serverDetails.vm) {
+        if (!topic.includes("docker") && serverDetails?.vm) {
           Object.keys(serverDetails.vm.details).forEach((vmId) => {
+            // @ts-ignore
             const vm = serverDetails.vm.details[vmId];
             if (sanitise(vm.name) === topicParts[2]) {
               vmIdentifier = vmId;
@@ -139,6 +147,7 @@ export default function startMQTTClient() {
         } else if (serverDetails.docker) {
           Object.keys(serverDetails.docker.details.containers).forEach(
             (dockerId) => {
+              // @ts-ignore
               const docker = serverDetails.docker.details.containers[dockerId];
               if (sanitise(docker.name) === topicParts[2]) {
                 dockerIdentifier = dockerId;
@@ -151,8 +160,10 @@ export default function startMQTTClient() {
 
       const responses = [];
 
+      console.log(updated);
+
       if (topic.toLowerCase().includes("state")) {
-        let command = "";
+        let command: DockerAction | VMAction;
         switch (message.toString()) {
           case "started":
             if (
@@ -187,15 +198,17 @@ export default function startMQTTClient() {
         }
 
         if (!topic.includes("docker")) {
-          const vmDetailsToSend = {
+          const vmDetailsToSend: Partial<VmDetail> = {
             id: vmIdentifier,
             status: message.toString(),
             coreCount: vmDetails.coreCount,
             ram: vmDetails.ramAllocation,
             primaryGPU: vmDetails.primaryGPU,
             name: vmSanitisedName,
-            description: vmDetails.edit.description,
-            mac: vmDetails.edit.nics[0] ? vmDetails.edit.nics[0].mac : undefined
+            description: vmDetails.edit?.description,
+            mac: vmDetails.edit?.nics[0]
+              ? vmDetails.edit.nics[0].mac
+              : undefined
           };
           console.log(`Updating MQTT for: ${queryID}`);
           client.publish(
@@ -368,6 +381,8 @@ export default function startMQTTClient() {
 }
 
 function updateMQTT(client) {
+  console.log("updateMqtt");
+
   try {
     const keys = JSON.parse(
       fs
@@ -438,7 +453,7 @@ function mqttRepeat(client) {
   );
 }
 
-function getServerDetails(client, servers, disabledDevices, ip, timer) {
+function getServerDetails(client, servers, disabledDevices, ip: string, timer) {
   const server = servers[ip];
   if (!server.serverDetails || disabledDevices.includes(ip)) {
     return;

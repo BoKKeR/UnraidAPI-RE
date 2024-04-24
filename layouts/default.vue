@@ -35,7 +35,11 @@
       </v-container>
     </v-content>
     <v-footer :fixed="fixed" app>
-      <span>&copy; 2021 Electric Brain Ltd</span>
+      <span
+        >&copy; 2024 Forked by BoKKeR. ⭐ the
+        <a href="https://github.com/BoKKeR/UnraidAPI-RE/">repo</a> to keep me
+        employable.</span
+      >
     </v-footer>
   </v-app>
 </template>
@@ -67,7 +71,7 @@ export default {
       miniVariant: false,
       right: false,
       rightDrawer: false,
-      title: "UnRaid Manager"
+      title: "UnRaid-RE Manager"
     };
   }
 };

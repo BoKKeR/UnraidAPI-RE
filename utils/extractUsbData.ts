@@ -1,4 +1,4 @@
-import { UsbData, VMData } from "~/types";
+import { UsbData, VMData } from "~/types/json-server";
 import { extractValue } from "./extractValue";
 import writeTestFile from "./writeTestFile";
 import * as cheerio from "cheerio";

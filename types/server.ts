@@ -1,7 +1,11 @@
-import { Disk, DockerDetail, PCIData, UsbData } from ".";
+import { Disk, DockerDetail, PCIData, UsbData } from "./json-server";
 
 export type DockerAction = "domain-start" | "domain-restart" | "domain-stop";
-
+export type VMAction =
+  | "domain-resume"
+  | "domain-pause"
+  | "domain-destroy"
+  | "domain-pmsuspend";
 export interface RootServerJSONConfig {
   [key: string]: ServerJSONConfig;
 }
@@ -76,11 +80,14 @@ export interface VmDetail {
   id: string;
   status: string;
   icon: string;
-  coreCount: string;
+  coreCount?: string;
+  mac?: string;
   ramAllocation: string;
+  ram?: string;
   hddAllocation: HddAllocation;
-  primaryGPU: string;
+  primaryGPU?: string;
   xml: string;
+  description?: string;
   edit: Edit;
 }
 
@@ -95,6 +102,7 @@ export interface All {
 }
 
 export interface Edit {
+  description: string;
   template_os: string;
   domain_type: string;
   template_name: string;

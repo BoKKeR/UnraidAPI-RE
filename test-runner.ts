@@ -16,8 +16,10 @@ const main = async () => {
   } else {
     // Assuming each folder name is a valid environment variable
     for (const folder of files) {
-      // Set environment variable based on folder name
-      await testVersion(folder);
+      if (folder !== ".DS_Store") {
+        // Set environment variable based on folder name
+        await testVersion(folder);
+      }
     }
   }
 };
