@@ -1016,8 +1016,6 @@ export async function changeDockerState(
   auth: string,
   token: string
 ) {
-  console.log(action);
-
   if (!token) {
     token = (await getCSRFToken(server, auth)) as string;
     console.log(`Got new CSRF_token: ${token}`);

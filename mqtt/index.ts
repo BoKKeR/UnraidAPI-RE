@@ -1,4 +1,4 @@
-import { connect } from "mqtt";
+import { connect, ClientOptions, MqttClient } from "mqtt";
 import {
   changeArrayState,
   changeDockerState,
@@ -42,21 +42,29 @@ export default function startMQTTClient() {
     console.log("mqtt disabled");
     return;
   }
-
+  const {
+    username,
+    password,
+    port,
+    host,
+    rejectUnauthorized,
+    secure
+  } = env.MQTTConnection;
   try {
     const options = {
-      username: process.env.MQTTUser,
-      password: process.env.MQTTPass,
-      port: process.env.MQTTPort,
-      host: env.MQTTBroker,
-      rejectUnauthorized: process.env.MQTTSelfSigned !== "true"
+      username: username,
+      password: password,
+      port: port,
+      host: host,
+      rejectUnauthorized: rejectUnauthorized
     };
-    const client = connect(
-      process.env.MQTTSecure === "true"
-        ? "mqtts://"
-        : `mqtt://${env.MQTTBroker}`,
-      options
-    );
+
+    const mqttProtocol = secure ? "mqtts://" : "mqtt://";
+    const mqttUrl = `${mqttProtocol}${host}`;
+
+    // Create MQTT client instance
+    const client: MqttClient = connect(mqttUrl, options);
+
     client.on(
       "connect",
       () => {
@@ -556,6 +564,7 @@ function getServerDetails(
 
   if (server.vm?.details && !disabledDevices.includes(`${ip}|VMs`)) {
     Object.keys(server.vm.details).forEach((vmId) => {
+      // @ts-ignore
       const vm = server.vm.details[vmId];
       setTimeout(() => {
         getVMDetails(
@@ -597,7 +606,7 @@ function getVMDetails(
   vmId: string,
   serverTitleSanitised: string,
   ip: string,
-  server
+  server: ServerJSONConfig
 ) {
   if (disabledDevices.includes(`${ip}|${vmId}`)) {
     return;
