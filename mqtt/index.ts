@@ -398,10 +398,7 @@ function updateMQTT(client) {
         );
       }, currentTimer);
 
-      currentTimer +=
-        (process.env.MQTTRefreshRate
-          ? +process.env.MQTTRefreshRate * 1000
-          : 20000) / 4;
+      currentTimer += (env.MQTTRefreshRate * 1000) / 4;
     });
   } catch (e) {
     console.log(e);
