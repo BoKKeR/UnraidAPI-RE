@@ -28,5 +28,5 @@ function deleteIP(ip) {
 
   servers[ip] = undefined;
 
-  fs.writeFileSync("config/servers.json", JSON.stringify(servers));
+  fs.writeFileSync("config/servers.json", JSON.stringify(servers, null, 2));
 }

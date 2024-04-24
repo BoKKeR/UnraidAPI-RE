@@ -31,5 +31,8 @@ export default function(req, res, next) {
 }
 
 function storeDevices(data) {
-  fs.writeFileSync("config/mqttDisabledDevices.json", JSON.stringify(data));
+  fs.writeFileSync(
+    "config/mqttDisabledDevices.json",
+    JSON.stringify(data, null, 2)
+  );
 }

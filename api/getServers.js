@@ -10,7 +10,7 @@ export default function(req, res, next) {
     if (!fs.existsSync("config/")) {
       fs.mkdirSync("config/");
     }
-    fs.writeFileSync("config/servers.json", JSON.stringify(servers));
+    fs.writeFileSync("config/servers.json", JSON.stringify(servers, null, 2));
   }
   if (
     (!req.headers.authorization ||
@@ -33,8 +33,9 @@ export default function(req, res, next) {
     (!req.headers.authorization || req.headers.authorization.length <= 2)
   ) {
     req.headers.authorization = fs.readFileSync(
-      (process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/") +
-        "mqttKeys"
+      `${
+        process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
+      }mqttKeys`
     );
   }
 

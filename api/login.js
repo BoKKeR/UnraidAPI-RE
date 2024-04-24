@@ -30,22 +30,23 @@ async function connectToServer(data) {
     }
     if (
       !fs.existsSync(
-        process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/"
+        process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
       )
     ) {
       fs.mkdirSync(
-        process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/"
+        process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
       );
     }
     if (
       !fs.existsSync(
-        (process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/") +
-          "mqttKeys"
+        `${
+          process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
+        }mqttKeys`
       )
     ) {
       fs.writeFileSync(
         process.env.KeyStorage
-          ? process.env.KeyStorage + "/"
+          ? `${process.env.KeyStorage}/`
           : "secure/mqttKeys",
         {}
       );
@@ -57,8 +58,9 @@ async function connectToServer(data) {
     try {
       keys = JSON.parse(
         fs.readFileSync(
-          (process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/") +
-            "mqttKeys"
+          `${
+            process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
+          }mqttKeys`
         )
       );
     } catch (e) {
@@ -68,13 +70,14 @@ async function connectToServer(data) {
         servers[data.ip] = {};
         keys[data.ip] = data.authToken;
         fs.writeFileSync(
-          (process.env.KeyStorage ? process.env.KeyStorage + "/" : "secure/") +
-            "mqttKeys",
-          JSON.stringify(keys)
+          `${
+            process.env.KeyStorage ? `${process.env.KeyStorage}/` : "secure/"
+          }mqttKeys`,
+          JSON.stringify(keys, null, 2)
         );
       }
 
-      fs.writeFileSync("config/servers.json", JSON.stringify(servers));
+      fs.writeFileSync("config/servers.json", JSON.stringify(servers, null, 2));
       response.message = "Connected";
     }
   }

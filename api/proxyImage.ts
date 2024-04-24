@@ -10,7 +10,7 @@ export default function(req, res, next) {
     if (!fs.existsSync("config/")) {
       fs.mkdirSync("config/");
     }
-    fs.writeFileSync("config/servers.json", JSON.stringify(servers));
+    fs.writeFileSync("config/servers.json", JSON.stringify(servers, null, 2));
   }
   getImage(servers, res, req.path);
 }
