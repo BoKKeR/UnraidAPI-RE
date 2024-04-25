@@ -4,6 +4,10 @@
 <img src="https://github.com/BoKKeR/UnraidAPI-RE/blob/master/static/iconx64.png?raw=true">
 </p>
 
+<p align="center"> 
+<img src="https://github.com/BoKKeR/UnraidAPI-RE/blob/master/static/unraid.jpeg?raw=true">
+</p>
+
 > A new UI and API for controlling multiple unraid instances and connecting them to the Home Assistant
 > Fork of the original project which is abandoned ElectricBrainUK/UnraidAPI
 
@@ -86,6 +90,25 @@ The **payload options** are **started, stopped, paused, restart, kill, hibernate
 ```
 
 When connecting the unraid api to an mqtt broker config details for all the various api functions are posted under the various homeassistant entity types. For example under **homeassistant/switch/server/vm/config**.
+
+<picture>
+  <source
+    srcset="
+      https://api.star-history.com/svg?repos=bokker/UnraidAPI-RE&type=Date&theme=dark
+    "
+  />
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="
+      https://api.star-history.com/svg?repos=bokker/UnraidAPI-RE&type=Date
+    "
+  />
+  <img
+    alt="Star History Chart"
+    src="https://api.star-history.com/svg?repos=bokker/UnraidAPI-RE&type=Date"
+  />
+</picture>
+
 
 <p align="center"> 
 Icon made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a>
