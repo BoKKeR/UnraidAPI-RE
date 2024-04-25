@@ -3,6 +3,10 @@
 <p align="center"> 
 <img src="https://github.com/BoKKeR/UnraidAPI-RE/blob/master/static/iconx64.png?raw=true">
 </p>
+<p align="center"> 
+Icon made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a>
+</p>
+
 
 <p align="center"> 
 <img src="https://github.com/BoKKeR/UnraidAPI-RE/blob/master/static/unraid.jpeg?raw=true">
@@ -108,8 +112,3 @@ When connecting the unraid api to an mqtt broker config details for all the vari
     src="https://api.star-history.com/svg?repos=bokker/UnraidAPI-RE&type=Date"
   />
 </picture>
-
-
-<p align="center"> 
-Icon made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a>
-</p>
