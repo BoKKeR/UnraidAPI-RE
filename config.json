@@ -12,7 +12,7 @@
     "MQTTPort": 1883,
     "MQTTUser": null,
     "MQTTPass": null,
-    "MQTTBaseTopic": null,
+    "MQTTBaseTopic": "homeassistant",
     "MQTTSecure": false,
     "MQTTSelfSigned": false,
     "MQTTRefreshRate": null,
