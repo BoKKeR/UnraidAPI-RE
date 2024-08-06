@@ -436,7 +436,7 @@ function mqttRepeat(client) {
 }
 
 function getServerDetails(
-  client,
+  client: MqttClient,
   servers: RootServerJSONConfig,
   disabledDevices,
   ip: string,
