@@ -28,6 +28,7 @@ import extractUSBData from "./extractUsbData";
 import fetch from "node-fetch";
 import FormData from "form-data";
 
+axios.defaults.timeout = 3000;
 axios.defaults.withCredentials = true;
 axios.defaults.httpsAgent = new https.Agent({
   keepAlive: true,
@@ -87,72 +88,82 @@ export async function getUnraidDetails(
   servers: RootServerJSONConfig,
   serverAuth: string
 ) {
-  await logIn(servers, serverAuth);
-  await getServerDetails(servers, serverAuth);
-  getVMs(servers, serverAuth);
-  getUSBDetails(servers, serverAuth);
-  getPCIDetails(servers);
-  getDockers(servers, serverAuth);
+  try {
+    await logIn(servers, serverAuth);
+    await getServerDetails(servers, serverAuth);
+    await getVMs(servers, serverAuth);
+    await getUSBDetails(servers, serverAuth);
+    getPCIDetails(servers);
+    await getDockers(servers, serverAuth);
+  } catch (error) {
+    console.log("in error");
+  }
 }
 
-function logIn(servers: RootServerJSONConfig, serverAuth: string) {
-  const promises: Promise<any>[] = [];
-  Object.keys(servers).forEach((ip) => {
+async function logIn(servers: RootServerJSONConfig, serverAuth: string) {
+  for (const ip of Object.keys(servers)) {
     if (!serverAuth[ip] || (authCookies[ip] && authCookies[ip] !== undefined)) {
       if (!serverAuth[ip]) {
         servers[ip].status = "offline";
       } else {
         servers[ip].status = "online";
       }
-      return;
+      continue;
     }
+
     servers[ip].status = "offline";
     const buff = Buffer.from(serverAuth[ip], "base64");
-
     const details = buff.toString("ascii");
-
     const data = new FormData();
     data.append("username", details.substring(0, details.indexOf(":")));
     data.append("password", details.substring(details.indexOf(":") + 1));
 
-    promises.push(
-      logInToUrl(`${ip.includes("http") ? ip : `http://${ip}`}/login`, data, ip)
-    );
-  });
-
-  return Promise.all(promises);
+    try {
+      await logInToUrl(
+        `${ip.includes("http") ? ip : `http://${ip}`}/login`,
+        data,
+        ip
+      );
+      servers[ip].status = "online";
+    } catch (error) {
+      console.log(`Failed in logIn for ${ip}`);
+    }
+  }
 }
 
-function logInToUrl(url: string, data: any, ip: string) {
-  return axios({
-    url,
-    method: "POST",
-    data,
-    headers: {
-      ...data.getHeaders(),
-      "cache-control": "no-cache",
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    httpAgent: new http.Agent({ keepAlive: true }),
-    maxRedirects: 0
-  })
-    .then((response) => {
-      authCookies[ip] = response.headers["set-cookie"][0];
-    })
-    .catch((error) => {
-      if (
-        error.response?.headers["set-cookie"] &&
-        error.response.headers["set-cookie"][0]
-      ) {
-        authCookies[ip] = error.response.headers["set-cookie"][0];
-      } else if (error.response?.headers.location) {
-        return logInToUrl(
-          error.response.headers.location,
-          data,
-          error.response.headers.location
-        );
-      }
+async function logInToUrl(url: string, data: any, ip: string) {
+  try {
+    const response = await axios({
+      url,
+      method: "POST",
+      data,
+      headers: {
+        ...data.getHeaders(),
+        "cache-control": "no-cache",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      httpAgent: new http.Agent({ keepAlive: true }),
+      maxRedirects: 0
     });
+
+    if (response.headers["set-cookie"] && response.headers["set-cookie"][0]) {
+      authCookies[ip] = response.headers["set-cookie"][0];
+    }
+  } catch (error) {
+    if (
+      error.response?.headers["set-cookie"] &&
+      error.response.headers["set-cookie"][0]
+    ) {
+      console.log("err1");
+      authCookies[ip] = error.response.headers["set-cookie"][0];
+    } else if (error.response?.headers.location) {
+      return logInToUrl(
+        error.response.headers.location,
+        data,
+        error.response.headers.location
+      );
+    }
+  }
 }
 
 export function getPCIDetails(servers, skipSave?: boolean) {
@@ -172,53 +183,56 @@ export function getPCIDetails(servers, skipSave?: boolean) {
     }
   });
 }
-
-function getUSBDetails(servers, serverAuth) {
-  Object.keys(servers).forEach((ip) => {
+async function getUSBDetails(servers, serverAuth) {
+  for (const ip of Object.keys(servers)) {
     if (!serverAuth[ip]) {
-      return;
+      continue;
     }
 
     if (
       servers[ip].vm?.details &&
       Object.keys(servers[ip].vm.details).length > 0
     ) {
-      axios({
-        method: "get",
-        url: `${ip.includes("http") ? ip : `http://${ip}`}/VMs/UpdateVM?uuid=${
-          servers[ip].vm.details[Object.keys(servers[ip].vm.details)[0]].id
-        }`,
-        headers: {
-          Authorization: `Basic ${serverAuth[ip]}`,
-          Cookie: authCookies[ip] ? authCookies[ip] : ""
-        }
-      })
-        .then((response) => {
-          callSucceeded(ip);
-          writeTestFile(response.data, "updateVM.html");
-          updateFile(servers, ip, "status");
-          servers[ip].usbDetails = [];
-          while (response.data.toString().includes('<label for="usb')) {
-            const usbDevice = extractUsbDetails(response.data);
-            servers[ip].usbDetails.push(usbDevice);
-            response.data = response.data.replace('<label for="usb', "");
-          }
-          updateFile(servers, ip, "usbDetails");
-        })
-        .catch((e) => {
-          console.log(`Get USB Details for ip: ${ip} Failed`);
-          if (e.response?.status) {
-            callFailed(ip, e.response.status);
-          } else {
-            callFailed(ip, 404);
-          }
-          console.log(e.message);
-          if (e.message.includes("ETIMEDOUT")) {
-            updateFile(servers, ip, "status");
+      try {
+        const response = await axios({
+          method: "get",
+          url: `${
+            ip.includes("http") ? ip : `http://${ip}`
+          }/VMs/UpdateVM?uuid=${
+            servers[ip].vm.details[Object.keys(servers[ip].vm.details)[0]].id
+          }`,
+          headers: {
+            Authorization: `Basic ${serverAuth[ip]}`,
+            Cookie: authCookies[ip] ? authCookies[ip] : ""
           }
         });
+
+        callSucceeded(ip);
+        writeTestFile(response.data, "updateVM.html");
+        updateFile(servers, ip, "status");
+        servers[ip].usbDetails = [];
+
+        while (response.data.toString().includes('<label for="usb')) {
+          const usbDevice = extractUsbDetails(response.data);
+          servers[ip].usbDetails.push(usbDevice);
+          response.data = response.data.replace('<label for="usb', "");
+        }
+
+        updateFile(servers, ip, "usbDetails");
+      } catch (e) {
+        console.log(`Get USB Details for ip: ${ip} Failed`);
+        if (e.response?.status) {
+          callFailed(ip, e.response.status);
+        } else {
+          callFailed(ip, 404);
+        }
+        console.log(e.message);
+        if (e.message.includes("ETIMEDOUT")) {
+          updateFile(servers, ip, "status");
+        }
+      }
     }
-  });
+  }
 }
 
 const getServerDetails = async (
@@ -266,143 +280,142 @@ const getServerDetails = async (
   }
 };
 
-function scrapeHTML(ip: string, serverAuth) {
-  return axios({
-    method: "get",
-    url: `${ip.includes("http") ? ip : `http://${ip}`}/Dashboard`,
-    headers: {
-      Authorization: `Basic ${serverAuth[ip]}`,
-      Cookie: authCookies[ip] ? authCookies[ip] : ""
-    }
-  })
-    .then((response) => {
-      callSucceeded(ip);
-
-      writeTestFile(response.data, "dashboard.html");
-
-      const details = extractServerDetails(response.data);
-
-      extractDiskDetails(details, "diskSpace", "array");
-      extractDiskDetails(details, "cacheSpace", "cache");
-
-      return details;
-    })
-    .catch((e) => {
-      console.log(
-        `Get Dashboard Details for ip: ${ip} Failed with status code: ${console.log(
-          e.response?.data
-        )}`
-      );
-      if (e.response?.status) {
-        callFailed(ip, e.response.status);
-      } else {
-        callFailed(ip, 404);
-      }
-      console.log(e.message);
-    });
-}
-
-function scrapeMainHTML(ip: string, serverAuth: string) {
-  return axios({
-    method: "get",
-    url: `${ip.includes("http") ? ip : `http://${ip}`}/Main`,
-    headers: {
-      Authorization: `Basic ${serverAuth[ip]}`,
-      Cookie: authCookies[ip] ? authCookies[ip] : ""
-    }
-  })
-    .then((response) => {
-      callSucceeded(ip);
-      const protection = extractValue(
-        response.data,
-        "</td></tr>\n          <tr><td>",
-        "</td><td>"
-      );
-      return {
-        arrayStatus: extractReverseValue(
-          extractValue(response.data, '<table class="array_status">', "/span>"),
-          "<",
-          ">"
-        ).split(",")[0],
-        arrayProtection: protection.includes(">") ? undefined : protection,
-        moverRunning: response.data.includes("Disabled - Mover is running."),
-        parityCheckRunning: response.data.includes("Parity-Check in progress."),
-        vmEnabled: enableVmFetching(response.data),
-        dockerEnabled: enableDockerFetching(response.data)
-      };
-    })
-    .catch((e) => {
-      console.log(`Get Main Details for ip: ${ip} Failed`);
-      if (e.response?.status) {
-        callFailed(ip, e.response.status);
-      } else {
-        callFailed(ip, 404);
-      }
-      console.log(e.message);
-    });
-}
-
-function getVMs(servers: RootServerJSONConfig, serverAuth: string) {
-  Object.keys(servers).forEach((ip) => {
-    if (!serverAuth[ip]) {
-      return;
-    }
-
-    if (!servers[ip].serverDetails.vmEnabled) {
-      return;
-    }
-
-    axios({
+async function scrapeHTML(ip: string, serverAuth: any) {
+  try {
+    const response = await axios({
       method: "get",
-      url: `${
-        ip.includes("http") ? ip : `http://${ip}`
-      }/plugins/dynamix.vm.manager/include/VMMachines.php`,
+      url: `${ip.includes("http") ? ip : `http://${ip}`}/Dashboard`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
         Cookie: authCookies[ip] ? authCookies[ip] : ""
       }
-    })
-      .then(async (response) => {
-        callSucceeded(ip);
-        servers[ip].vm = {} as Vm;
-        let htmlDetails;
+    });
 
-        writeTestFile(response.data, "virtualMachines.html");
+    callSucceeded(ip);
+    writeTestFile(response.data, "dashboard.html");
 
-        if (response.data.toString().includes("\u0000")) {
-          const parts = response.data.toString().split("\u0000");
-          htmlDetails = JSON.stringify(parts[0]);
-          try {
-            servers[ip].vm.extras = parts[1];
-          } catch (error) {
-            console.log("Error in  servers[ip].vm.extras = parts[1];");
-          }
-        } else {
-          htmlDetails = response.data.toString();
-        }
+    const details = extractServerDetails(response.data);
+    extractDiskDetails(details, "diskSpace", "array");
+    extractDiskDetails(details, "cacheSpace", "cache");
 
-        const details = parseHTML(htmlDetails);
-        try {
-          servers[ip].vm.details = await processVMResponse(
-            details,
-            ip,
-            serverAuth[ip]
-          );
-        } catch (error) {
-          console.log("servers[ip].vm.details");
+    return details;
+  } catch (e) {
+    console.log(
+      `Get Dashboard Details for ip: ${ip} Failed with status code: ${e.response?.status}`
+    );
+    if (e.response?.status) {
+      callFailed(ip, e.response.status);
+    } else {
+      callFailed(ip, 404);
+    }
+    console.log(e.message);
+  }
+}
+
+async function scrapeMainHTML(ip: string, serverAuth: string) {
+  try {
+    const response = await axios({
+      method: "get",
+      url: `${ip.includes("http") ? ip : `http://${ip}`}/Main`,
+      headers: {
+        Authorization: `Basic ${serverAuth[ip]}`,
+        Cookie: authCookies[ip] ? authCookies[ip] : ""
+      }
+    });
+
+    callSucceeded(ip);
+
+    const protection = extractValue(
+      response.data,
+      "</td></tr>\n          <tr><td>",
+      "</td><td>"
+    );
+
+    return {
+      arrayStatus: extractReverseValue(
+        extractValue(response.data, '<table class="array_status">', "/span>"),
+        "<",
+        ">"
+      ).split(",")[0],
+      arrayProtection: protection.includes(">") ? undefined : protection,
+      moverRunning: response.data.includes("Disabled - Mover is running."),
+      parityCheckRunning: response.data.includes("Parity-Check in progress."),
+      vmEnabled: enableVmFetching(response.data),
+      dockerEnabled: enableDockerFetching(response.data)
+    };
+  } catch (e) {
+    console.log(`Get Main Details for ip: ${ip} Failed`);
+    if (e.response?.status) {
+      callFailed(ip, e.response.status);
+    } else {
+      callFailed(ip, 404);
+    }
+    console.log(e.message);
+  }
+}
+
+async function getVMs(servers: RootServerJSONConfig, serverAuth: string) {
+  for (const ip of Object.keys(servers)) {
+    if (!serverAuth[ip]) {
+      continue;
+    }
+
+    if (!servers[ip].serverDetails.vmEnabled) {
+      continue;
+    }
+
+    try {
+      const response = await axios({
+        method: "get",
+        url: `${
+          ip.includes("http") ? ip : `http://${ip}`
+        }/plugins/dynamix.vm.manager/include/VMMachines.php`,
+        headers: {
+          Authorization: `Basic ${serverAuth[ip]}`,
+          Cookie: authCookies[ip] ? authCookies[ip] : ""
         }
-        updateFile(servers, ip, "vm");
-      })
-      .catch((e) => {
-        console.log(`Get VM Details for ip: ${ip} Failed`);
-        if (e.response?.status) {
-          callFailed(ip, e.response.status);
-        } else {
-          callFailed(ip, 404);
-        }
-        console.log(e.message);
       });
-  });
+
+      callSucceeded(ip);
+      servers[ip].vm = {} as Vm;
+      let htmlDetails;
+
+      writeTestFile(response.data, "virtualMachines.html");
+
+      if (response.data.toString().includes("\u0000")) {
+        const parts = response.data.toString().split("\u0000");
+        htmlDetails = JSON.stringify(parts[0]);
+        try {
+          servers[ip].vm.extras = parts[1];
+        } catch (error) {
+          console.log("Error in servers[ip].vm.extras = parts[1];");
+        }
+      } else {
+        htmlDetails = response.data.toString();
+      }
+
+      const details = parseHTML(htmlDetails);
+      try {
+        servers[ip].vm.details = await processVMResponse(
+          details,
+          ip,
+          serverAuth[ip]
+        );
+      } catch (error) {
+        console.log("Error processing VM response for ip:", ip);
+      }
+
+      updateFile(servers, ip, "vm");
+    } catch (e) {
+      console.log(`Get VM Details for ip: ${ip} Failed`);
+      if (e.response?.status) {
+        callFailed(ip, e.response.status);
+      } else {
+        callFailed(ip, 404);
+      }
+      console.log(e.message);
+    }
+  }
 }
 
 function processDockerResponse(details) {
@@ -481,44 +494,46 @@ function processDockerResponse(details) {
   });
   return { images, containers };
 }
+async function getDockers(servers: RootServerJSONConfig, serverAuth: string) {
+  for (const ip of Object.keys(servers)) {
+    console.log(serverAuth[ip].status);
 
-function getDockers(servers: RootServerJSONConfig, serverAuth: string) {
-  Object.keys(servers).forEach((ip) => {
     if (!serverAuth[ip]) {
-      return;
+      continue;
     }
 
     if (!servers[ip].serverDetails.dockerEnabled) {
-      return;
+      continue;
     }
-    axios({
-      method: "get",
-      url: `${
-        ip.includes("http") ? ip : `http://${ip}`
-      }/plugins/dynamix.docker.manager/include/DockerContainers.php`,
-      headers: {
-        Authorization: `Basic ${serverAuth[ip]}`,
-        Cookie: authCookies[ip] ? authCookies[ip] : ""
-      }
-    })
-      .then(async (response) => {
-        callSucceeded(ip);
-        const htmlDetails = JSON.stringify(response.data);
-        const details = parseHTML(htmlDetails);
-        servers[ip].docker = {};
-        servers[ip].docker.details = await processDockerResponse(details);
-        updateFile(servers, ip, "docker");
-      })
-      .catch((e) => {
-        console.log(`Get Docker Details for ip: ${ip} Failed`);
-        if (e.response?.status) {
-          callFailed(ip, e.response.status);
-        } else {
-          callFailed(ip, 404);
+
+    try {
+      const response = await axios({
+        method: "get",
+        url: `${
+          ip.includes("http") ? ip : `http://${ip}`
+        }/plugins/dynamix.docker.manager/include/DockerContainers.php`,
+        headers: {
+          Authorization: `Basic ${serverAuth[ip]}`,
+          Cookie: authCookies[ip] ? authCookies[ip] : ""
         }
-        console.log(e.message);
       });
-  });
+
+      callSucceeded(ip);
+      const htmlDetails = JSON.stringify(response.data);
+      const details = parseHTML(htmlDetails);
+      servers[ip].docker = {};
+      servers[ip].docker.details = await processDockerResponse(details);
+      updateFile(servers, ip, "docker");
+    } catch (e) {
+      console.log(`Get Docker Details for ip: ${ip} Failed`);
+      if (e.response?.status) {
+        callFailed(ip, e.response.status);
+      } else {
+        callFailed(ip, 404);
+      }
+      console.log(e.message);
+    }
+  }
 }
 
 function updateFile(servers, ip: string, tag: string) {
@@ -735,28 +750,28 @@ async function simplifyResponse(object, ip: string, auth: string) {
   return temp;
 }
 
-export function getCSRFToken(server: string, auth: string) {
-  return axios({
-    method: "get",
-    url: `${server.includes("http") ? server : `http://${server}`}/Dashboard`,
-    headers: {
-      Authorization: `Basic ${auth}`,
-      Cookie: authCookies[server] ? authCookies[server] : ""
-    }
-  })
-    .then((response) => {
-      callSucceeded(server);
-      return extractCsrfToken(response.data);
-    })
-    .catch((e) => {
-      console.log(`Get CSRF Token for server: ${server} Failed`);
-      if (e.response?.status) {
-        callFailed(server, e.response.status);
-      } else {
-        callFailed(server, 404);
+export async function getCSRFToken(server: string, auth: string) {
+  try {
+    const response = await axios({
+      method: "get",
+      url: `${server.includes("http") ? server : `http://${server}`}/Dashboard`,
+      headers: {
+        Authorization: `Basic ${auth}`,
+        Cookie: authCookies[server] ? authCookies[server] : ""
       }
-      console.log(e.message);
     });
+
+    callSucceeded(server);
+    return extractCsrfToken(response.data);
+  } catch (e) {
+    console.log(`Get CSRF Token for server: ${server} Failed`);
+    if (e.response?.status) {
+      callFailed(server, e.response.status);
+    } else {
+      callFailed(server, 404);
+    }
+    console.log(e.message);
+  }
 }
 
 export function extractReverseValue(
@@ -1064,6 +1079,8 @@ export function gatherDetailsFromEditVM(
   vmObject,
   auth
 ) {
+  console.log("HERE --- - - - - -");
+
   const rawdata = fs.readFileSync("config/servers.json");
   const servers = JSON.parse(rawdata.toString());
   if (!vmObject) {

@@ -4,7 +4,7 @@ export default {
   MQTTBaseTopic: process.env.MQTTBaseTopic,
   MQTTRefreshRate: process.env.MQTTRefreshRate
     ? parseInt(process.env.MQTTRefreshRate)
-    : 20,
+    : 60,
   MQTTCacheTime: process.env.MQTTCacheTime
     ? parseInt(process.env.MQTTCacheTime)
     : 60,
