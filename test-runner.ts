@@ -31,7 +31,7 @@ const testVersion = async (folder: string) => {
 
   // Execute Jest for each folder
   const jestProcess = child_process.spawn(
-    "./node_modules/.bin/jest --coverage=false",
+    "WRITE_HTML_OUTPUT=false && ./node_modules/.bin/jest --coverage=false --verbose=false",
     [],
     {
       stdio: "inherit",
