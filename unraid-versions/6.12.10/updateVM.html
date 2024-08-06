@@ -1,0 +1,2616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>UNRAIDVM/UpdateVM</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Security-Policy" content="block-all-mixed-content">
+<meta name="format-detection" content="telephone=no">
+<meta name="viewport" content="width=1300">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="same-origin">
+<link type="image/png" rel="shortcut icon" href="/webGui/images/green-on.png">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/default-fonts.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/default-cases.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/font-awesome.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/context.standalone.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/jquery.sweetalert.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/default-white.css?v=1700087630">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/dynamix-white.css?v=1700087630">
+<style>
+.inline_help{display:none}
+.upgrade_notice{position:fixed;top:24px;left:50%;margin-left:-480px;width:900px;height:38px;line-height:38px;color:#e68a00;background-color:#feefb3;border:#e68a00 1px solid;border-radius:38px;text-align:center;font-size:1.4rem;z-index:999}
+.upgrade_notice.done{color:#4f8a10;background-color:#dff2bf;border-color:#4f8a10}
+.upgrade_notice.alert{color:#f0000c;background-color:#ff9e9e;border-color:#f0000c}
+.upgrade_notice i{float:right;cursor:pointer}
+.back_to_top{display:none;position:fixed;bottom:30px;right:12px;color:#e22828;font-size:2.5rem;z-index:999}
+span.big.blue-text{cursor:pointer}
+i.abortOps{font-size:2rem;float:right;margin-right:20px;margin-top:8px;cursor:pointer}
+pre#swalbody p{margin-block-end:1em}
+#header.image{background-image:url(/webGui/images/banner.png)}
+</style>
+
+<noscript>
+<div class="upgrade_notice">Your browser has JavaScript disabled</div>
+</noscript>
+
+<script src="/webGui/javascript/dynamix.js?v=1706635116"></script>
+<script src="/webGui/javascript/translate.en_US.js?v=1700086926"></script>
+<script>
+String.prototype.actionName = function(){return this.split(/[\\/]/g).pop();}
+String.prototype.channel = function(){return this.split(':')[1].split(',').findIndex((e)=>/\[\d\]/.test(e));}
+
+Shadowbox.init({skipSetup:true});
+context.init();
+
+// server uptime
+var uptime = 226.02;
+var expiretime = 0;
+var before = new Date();
+
+// page timer events
+const timers = {};
+timers.bannerWarning = null;
+
+// tty window
+var tty_window = null;
+
+const addAlert = {};
+addAlert.text = $.cookie('addAlert-text');
+addAlert.cmd = $.cookie('addAlert-cmd');
+addAlert.plg = $.cookie('addAlert-plg');
+addAlert.func = $.cookie('addAlert-func');
+
+// current csrf_token
+var csrf_token = "7D7248FFFB043369";
+
+// form has unsaved changes indicator
+var formHasUnsavedChanges = false;
+
+// docker progess indicators
+var progress_dots = [], progress_span = [];
+function pauseEvents(id) {
+  $.each(timers, function(i,timer){
+    if (!id || i==id) clearTimeout(timer);
+  });
+}
+function resumeEvents(id,delay) {
+  var startDelay = delay||50;
+  $.each(timers, function(i,timer) {
+    if (!id || i==id) timers[i] = setTimeout(i+'()', startDelay);
+    startDelay += 50;
+  });
+}
+function plus(value,single,plural,last) {
+  return value>0 ? (value+' '+(value==1?single:plural)+(last?'':', ')) : '';
+}
+function updateTime() {
+  var now = new Date();
+  var days = parseInt(uptime/86400);
+  var hour = parseInt(uptime/3600%24);
+  var mins = parseInt(uptime/60%60);
+  $('span.uptime').html(((days|hour|mins)?plus(days,"day","days",(hour|mins)==0)+plus(hour,"hour","hours",mins==0)+plus(mins,"minute","minutes",true):"less than a minute"));
+  uptime += Math.round((now.getTime() - before.getTime())/1000);
+  before = now;
+  if (expiretime > 0) {
+    var remainingtime = expiretime - now.getTime()/1000;
+    if (remainingtime > 0) {
+      days = parseInt(remainingtime/86400);
+      hour = parseInt(remainingtime/3600%24);
+      mins = parseInt(remainingtime/60%60);
+      if (days) {
+        $('#licenseexpire').html(plus(days,"day","days",true)+" remaining");
+      } else if (hour) {
+        $('#licenseexpire').html(plus(hour,"hour","hours",true)+" remaining").addClass('orange-text');
+      } else if (mins) {
+        $('#licenseexpire').html(plus(mins,"minute","minutes",true)+" remaining").addClass('red-text');
+      } else {
+        $('#licenseexpire').html("less than a minute remaining").addClass('red-text');
+      }
+    } else {
+      $('#licenseexpire').addClass('red-text');
+    }
+  }
+  setTimeout(updateTime,1000);
+}
+function refresh(top) {
+  if (typeof top === 'undefined') {
+    for (var i=0,element; element=document.querySelectorAll('input,button,select')[i]; i++) {element.disabled = true;}
+    for (var i=0,link; link=document.getElementsByTagName('a')[i]; i++) { link.style.color = "gray"; } //fake disable
+    location.reload();
+  } else {
+    $.cookie('top',top);
+    location.reload();
+  }
+}
+function initab(page) {
+  $.removeCookie('one');
+  $.removeCookie('tab');
+  if (page != null) location.replace(page);
+}
+function settab(tab) {
+  $.cookie(($.cookie('one')==null?'tab':'one'),tab);
+}
+function done(key) {
+  var url = location.pathname.split('/');
+  var path = '/'+url[1];
+  if (key) for (var i=2; i<url.length; i++) if (url[i]==key) break; else path += '/'+url[i];
+  $.removeCookie('one');
+  location.replace(path);
+}
+function chkDelete(form, button) {
+  button.value = form.confirmDelete.checked ? "Delete" : "Apply";
+  button.disabled = false;
+}
+function makeWindow(name,height,width) {
+  var top = (screen.height-height)/2;
+  if (top < 0) {top = 0; height = screen.availHeight;}
+  var left = (screen.width-width)/2;
+  if (left < 0) {left = 0; width = screen.availWidth;}
+  return window.open('',name,'resizeable=yes,scrollbars=yes,height='+height+',width='+width+',top='+top+',left='+left);
+}
+function openBox(cmd,title,height,width,load,func,id) {
+  // open shadowbox window (run in foreground)
+  // included for legacy purposes, replaced by openPlugin
+  var uri = cmd.split('?');
+  var run = uri[0].substr(-4)=='.php' ? cmd+(uri[1]?'&':'?')+'done=Done' : '/logging.htm?cmd='+cmd+'&csrf_token='+csrf_token+'&done=Done';
+  var options = load ? (func ? {modal:true,onClose:function(){setTimeout(func+'('+'"'+(id||'')+'")');}} : {modal:true,onClose:function(){location.reload();}}) : {modal:false};
+  Shadowbox.open({content:run, player:'iframe', title:title, height:Math.min(screen.availHeight,800), width:Math.min(screen.availWidth,1200), options:options});
+}
+function openWindow(cmd,title,height,width) {
+  // open regular window (run in background)
+  // included for legacy purposes, replaced by openTerminal
+  var window_name = title.replace(/ /g,"_");
+  var form_html = '<form action="/logging.htm" method="post" target="'+window_name+'">'+'<input type="hidden" name="csrf_token" value="'+csrf_token+'">'+'<input type="hidden" name="title" value="'+title+'">';
+  var vars = cmd.split('&');
+  form_html += '<input type="hidden" name="cmd" value="'+vars[0]+'">';
+  for (var i = 1; i < vars.length; i++) {
+    var pair = vars[i].split('=');
+    form_html += '<input type="hidden" name="'+pair[0]+'" value="'+pair[1]+'">';
+  }
+  form_html += '</form>';
+  var form = $(form_html);
+  $('body').append(form);
+  makeWindow(window_name,height,width);
+  form.submit();
+}
+function openTerminal(tag,name,more) {
+  if (/MSIE|Edge/.test(navigator.userAgent)) {
+    swal({title:"_(Unsupported Feature)_",text:"_(Sorry, this feature is not supported by MSIE/Edge)_.<br>_(Please try a different browser)_",type:'error',html:true,confirmButtonText:"_(Ok)_"});
+    return;
+  }
+  // open terminal window (run in background)
+  name = name.replace(/[ #]/g,"_");
+  tty_window = makeWindow(name+(more=='.log'?more:''),Math.min(screen.availHeight,800),Math.min(screen.availWidth,1200));
+  var socket = ['ttyd','syslog'].includes(tag) ? '/webterminal/'+tag+'/' : '/logterminal/'+name+(more=='.log'?more:'')+'/';
+  $.get('/webGui/include/OpenTerminal.php',{tag:tag,name:name,more:more},function(){setTimeout(function(){tty_window.location=socket; tty_window.focus();},200);});
+}
+function bannerAlert(text,cmd,plg,func,start) {
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd,pid:1},function(pid) {
+    if (pid == 0) {
+      if ($(".upgrade_notice").hasClass('done') || timers.bannerAlert == null) {
+        forcedBanner = false;
+        if ($.cookie('addAlert') != null) {
+          removeBannerWarning($.cookie('addAlert'));
+          $.removeCookie('addAlert');
+        }
+        $(".upgrade_notice").removeClass('alert done');
+        timers.callback = null;
+        if (plg != null) {
+          if ($.cookie('addAlert-page') == null || $.cookie('addAlert-page') == 'VMs') {
+            setTimeout((func||'loadlist')+'("'+plg+'")',250);
+          } else if ('Plugins' == 'VMs') {
+            setTimeout(refresh);
+          }
+        }
+        $.removeCookie('addAlert-page');
+      } else {
+        $(".upgrade_notice").removeClass('alert').addClass('done');
+        timers.bannerAlert = null;
+        setTimeout(function(){bannerAlert(text,cmd,plg,func,start);},1000);
+      }
+    } else {
+      $.cookie('addAlert',addBannerWarning(text,true,true,true));
+      $.cookie('addAlert-text',text);
+      $.cookie('addAlert-cmd',cmd);
+      $.cookie('addAlert-plg',plg);
+      $.cookie('addAlert-func',func);
+      if ($.cookie('addAlert-page') == null) $.cookie('addAlert-page','VMs');
+      timers.bannerAlert = setTimeout(function(){bannerAlert(text,cmd,plg,func,start);},1000);
+      if (start==1 && timers.callback==null && plg!=null) timers.callback = setTimeout((func||'loadlist')+'("'+plg+'")',250);
+    }
+  });
+}
+function openPlugin(cmd,title,plg,func,start=0,button=0) {
+  // start  = 0 : run command only when not already running (default)
+  // start  = 1 : run command unconditionally
+  // button = 0 : show CLOSE button (default)
+  // button = 1 : hide CLOSE button
+  nchan_plugins.start();
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd+' nchan',start:start},function(pid) {
+    if (pid==0) {
+      nchan_plugins.stop();
+      $('div.spinner.fixed').hide();
+      $(".upgrade_notice").addClass('alert');
+      return;
+    }
+    swal({title:title,text:"<pre id='swaltext'></pre><hr>",html:true,animation:'none',showConfirmButton:button==0,confirmButtonText:"Close"},function(close){
+      nchan_plugins.stop();
+      $('div.spinner.fixed').hide();
+      $('.sweet-alert').hide('fast').removeClass('nchan');
+      setTimeout(function(){bannerAlert("Attention - operation continues in background ["+pid.toString().padStart(8,'0')+"]<i class='fa fa-bomb fa-fw abortOps' title=\"Abort background process\" onclick='abortOperation("+pid+")'></i>",cmd,plg,func,start);});
+    });
+    $('.sweet-alert').addClass('nchan');
+    $('button.confirm').prop('disabled',button!=0);
+  });
+}
+function openDocker(cmd,title,plg,func,start=0,button=0) {
+  // start  = 0 : run command only when not already running (default)
+  // start  = 1 : run command unconditionally
+  // button = 0 : hide CLOSE button (default)
+  // button = 1 : show CLOSE button
+  nchan_docker.start();
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd,start:start},function(pid) {
+    if (pid==0) {
+      nchan_docker.stop();
+      $('div.spinner.fixed').hide();
+      $(".upgrade_notice").addClass('alert');
+      return;
+    }
+    swal({title:title,text:"<pre id='swaltext'></pre><hr>",html:true,animation:'none',showConfirmButton:button!=0,confirmButtonText:"Close"},function(close){
+      nchan_docker.stop();
+      $('div.spinner.fixed').hide();
+      $('.sweet-alert').hide('fast').removeClass('nchan');
+      setTimeout(function(){bannerAlert("Attention - operation continues in background ["+pid.toString().padStart(8,'0')+"]<i class='fa fa-bomb fa-fw abortOps' title=\"Abort background process\" onclick='abortOperation("+pid+")'></i>",cmd,plg,func,start);});
+    });
+    $('.sweet-alert').addClass('nchan');
+    $('button.confirm').prop('disabled',button==0);
+  });
+}
+function abortOperation(pid) {
+  swal({title:"Abort background operation",text:"This may leave an unknown state",html:true,animation:'none',type:'warning',showCancelButton:true,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(){
+    $.post('/webGui/include/StartCommand.php',{kill:pid},function() {
+      clearTimeout(timers.bannerAlert);
+      timers.bannerAlert = null;
+      timers.callback = null;
+      forcedBanner = false;
+      removeBannerWarning($.cookie('addAlert'));
+      $.removeCookie('addAlert');
+      $(".upgrade_notice").removeClass('alert done').hide();
+    });
+  });
+}
+function openChanges(cmd,title,nchan,button=0) {
+  // button = 0 : hide CLOSE button (default)
+  // button = 1 : show CLOSE button
+  // nchan argument is not used, exists for backward compatibility
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd,start:2},function(data) {
+    $('div.spinner.fixed').hide();
+    swal({title:title,text:"<pre id='swalbody'></pre><hr>",html:true,animation:'none',showConfirmButton:button!=0,confirmButtonText:"Close"},function(close){
+      $('.sweet-alert').hide('fast').removeClass('nchan');
+    });
+    $('.sweet-alert').addClass('nchan');
+    $('pre#swalbody').html(data);
+    $('button.confirm').text("Done").prop('disabled',false).show();
+  });
+}
+function openAlert(cmd,title,func) {
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd,start:2},function(data) {
+    $('div.spinner.fixed').hide();
+    swal({title:title,text:"<pre id='swalbody'></pre><hr>",html:true,animation:'none',showCancelButton:true,closeOnConfirm:false,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(proceed){
+      if (proceed) setTimeout(func+'()');
+    });
+    $('.sweet-alert').addClass('nchan');
+    $('pre#swalbody').html(data);
+  });
+}
+function openDone(data) {
+  if (data == '_DONE_') {
+    $('div.spinner.fixed').hide();
+    $('button.confirm').text("Done").prop('disabled',false).show();
+    if ( typeof ca_done_override !== 'undefined' ) {
+      if (ca_done_override == true) {
+        $("button.confirm").trigger("click");
+        ca_done_override = false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+function showStatus(name,plugin,job) {
+  $.post('/webGui/include/ProcessStatus.php',{name:name,plugin:plugin,job:job},function(status){$(".tabs").append(status);});
+}
+function showFooter(data, id) {
+  if (id !== undefined) $('#'+id).remove();
+  $('#copyright').prepend(data);
+}
+function showNotice(data) {
+  $('#user-notice').html(data.replace(/<a>(.*)<\/a>/,"<a href='/Plugins'>$1</a>"));
+}
+function escapeQuotes(form) {
+  $(form).find('input[type=text]').each(function(){$(this).val($(this).val().replace(/"/g,'\\"'));});
+}
+
+// Banner warning system
+var bannerWarnings = [];
+var currentBannerWarning = 0;
+var osUpgradeWarning = false;
+var forcedBanner = false;
+
+function addBannerWarning(text, warning=true, noDismiss=false, forced=false) {
+  var cookieText = text.replace(/[^a-z0-9]/gi,'');
+  if ($.cookie(cookieText) == "true") return false;
+  if (warning) text = "<i class='fa fa-warning fa-fw' style='float:initial'></i> "+text;
+  if (bannerWarnings.indexOf(text) < 0) {
+    if (forced) {
+      var arrayEntry = 0; bannerWarnings = []; clearTimeout(timers.bannerWarning); timers.bannerWarning = null; forcedBanner = true;
+    } else {
+      var arrayEntry = bannerWarnings.push("placeholder") - 1;
+    }
+    if (!noDismiss) text += "<a class='bannerDismiss' onclick='dismissBannerWarning("+arrayEntry+",&quot;"+cookieText+"&quot;)'></a>";
+    bannerWarnings[arrayEntry] = text;
+  } else {
+    return bannerWarnings.indexOf(text);
+  }
+  if (timers.bannerWarning==null) showBannerWarnings();
+  return arrayEntry;
+}
+
+function dismissBannerWarning(entry,cookieText) {
+  $.cookie(cookieText,"true",{expires:30}); // reset after 1 month
+  removeBannerWarning(entry);
+}
+
+function removeBannerWarning(entry) {
+  if (forcedBanner) return;
+  bannerWarnings[entry] = false;
+  clearTimeout(timers.bannerWarning);
+  showBannerWarnings();
+}
+
+function bannerFilterArray(array) {
+  var newArray = [];
+  array.filter(function(value,index,arr) {
+    if (value) newArray.push(value);
+  });
+  return newArray;
+}
+
+function showBannerWarnings() {
+  var allWarnings = bannerFilterArray(Object.values(bannerWarnings));
+  if (allWarnings.length == 0) {
+    $(".upgrade_notice").hide();
+    timers.bannerWarning = null;
+    return;
+  }
+  if (currentBannerWarning >= allWarnings.length) currentBannerWarning = 0;
+  $(".upgrade_notice").show().html(allWarnings[currentBannerWarning]);
+  currentBannerWarning++;
+  timers.bannerWarning = setTimeout(showBannerWarnings,3000);
+}
+
+function addRebootNotice(message="You must reboot for changes to take effect") {
+  addBannerWarning("<i class='fa fa-warning' style='float:initial;'></i> "+message,false,true);
+  $.post("/plugins/dynamix.plugin.manager/scripts/PluginAPI.php",{action:'addRebootNotice',message:message});
+}
+
+function removeRebootNotice(message="You must reboot for changes to take effect") {
+  var bannerIndex = bannerWarnings.indexOf("<i class='fa fa-warning' style='float:initial;'></i> "+message);
+  if (bannerIndex < 0) return;
+  removeBannerWarning(bannerIndex);
+  $.post("/plugins/dynamix.plugin.manager/scripts/PluginAPI.php",{action:'removeRebootNotice',message:message});
+}
+
+function showUpgradeChanges() {
+  openChanges("showchanges /tmp/plugins/unRAIDServer.txt","Release Notes");
+}
+function showUpgrade(text,noDismiss=false) {
+  if ($.cookie('os_upgrade')==null) {
+    if (osUpgradeWarning) removeBannerWarning(osUpgradeWarning);
+    osUpgradeWarning = addBannerWarning(text.replace(/<a>(.+?)<\/a>/,"<a href='#' onclick='openUpgrade()'>$1</a>").replace(/<b>(.*)<\/b>/,"<a href='#' onclick='document.rebootNow.submit()'>$1</a>"),false,noDismiss);
+  }
+}
+function hideUpgrade(set) {
+  removeBannerWarning(osUpgradeWarning);
+  if (set)
+    $.cookie('os_upgrade','true');
+  else
+    $.removeCookie('os_upgrade');
+}
+function confirmUpgrade(confirm) {
+  if (confirm) {
+    swal({title:"Update Unraid OS",text:"Do you want to update to the new version?",type:'warning',html:true,showCancelButton:true,closeOnConfirm:false,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(){
+      openPlugin("plugin update unRAIDServer.plg","Update Unraid OS");
+    });
+  } else {
+    openPlugin("plugin update unRAIDServer.plg","Update Unraid OS");
+  }
+}
+function openUpgrade() {
+  hideUpgrade();
+  $.get('/plugins/dynamix.plugin.manager/include/ShowPlugins.php',{cmd:'alert'},function(data) {
+    if (data==0) {
+      // no alert message - proceed with upgrade
+      confirmUpgrade(true);
+    } else {
+      // show alert message and ask for confirmation
+      openAlert("showchanges /tmp/plugins/my_alerts.txt","Alert Message",'confirmUpgrade');
+    }
+  });
+}
+function digits(number) {
+  if (number < 10) return 'one';
+  if (number < 100) return 'two';
+  return 'three';
+}
+function openNotifier(filter) {
+  $.post('/webGui/include/Notify.php',{cmd:'get',csrf_token:csrf_token},function(msg) {
+    $.each($.parseJSON(msg), function(i, notify) {
+      if (notify.importance==filter) {
+        $.jGrowl(notify.subject+'<br>'+notify.description, {
+          group: notify.importance,
+          header: notify.event+': '+notify.timestamp,
+          theme: notify.file,
+          sticky: true,
+          beforeOpen: function(e,m,o){if ($('div.jGrowl-notification').hasClass(notify.file)) return(false);},
+          afterOpen: function(e,m,o){if (notify.link) $(e).css('cursor','pointer');},
+          click: function(e,m,o){if (notify.link) location.replace(notify.link);},
+          close: function(e,m,o){$.post('/webGui/include/Notify.php',{cmd:'archive',file:notify.file,csrf_token:csrf_token});}
+        });
+      }
+    });
+  });
+}
+function closeNotifier(filter) {
+  $.post('/webGui/include/Notify.php',{cmd:'get',csrf_token:csrf_token},function(msg) {
+    $.each($.parseJSON(msg), function(i, notify) {
+      if (notify.importance==filter) $.post('/webGui/include/Notify.php',{cmd:'archive',file:notify.file,csrf_token:csrf_token});
+    });
+    $('div.jGrowl').find('.'+filter).find('div.jGrowl-close').trigger('click');
+  });
+}
+function viewHistory(filter) {
+  location.replace('/Tools/NotificationsArchive?filter='+filter);
+}
+function flashReport() {
+  $.post('/webGui/include/Report.php',{cmd:'config'},function(check){
+    if (check>0) addBannerWarning("Your flash drive is corrupted or offline. Post your diagnostics in the forum for help. <a target='_blank' href='https://docs.unraid.net/unraid-os/manual/changing-the-flash-device'>See also here</a>");
+  });
+}
+$(function() {
+  var tab = $.cookie('one')||$.cookie('tab')||'tab1';
+  if (tab=='tab0') tab = 'tab'+$('input[name$="tabs"]').length; else if ($('#'+tab).length==0) {initab(); tab = 'tab1';}
+  if ($.cookie('help')=='help') {$('.inline_help').show(); $('.nav-item.HelpButton').addClass('active');}
+  $('#'+tab).attr('checked', true);
+  updateTime();
+  $.jGrowl.defaults.closeTemplate = '<i class="fa fa-close"></i>';
+  $.jGrowl.defaults.closerTemplate = '<div class="top">[ close all notifications ]</div>';
+  $.jGrowl.defaults.position = 'top-right';
+  $.jGrowl.defaults.theme = '';
+  $.jGrowl.defaults.themeState = '';
+  $.jGrowl.defaults.pool = 10;
+  $.jGrowl.defaults.life = 5000;
+  Shadowbox.setup('a.sb-enable', {modal:true});
+// add any pre-existing reboot notices
+  $.post('/webGui/include/Report.php',{cmd:'notice'},function(notices){
+    notices = notices.split('\n');
+    for (var i=0,notice; notice=notices[i]; i++) addBannerWarning("<i class='fa fa-warning' style='float:initial;'></i> "+notice,false,true);
+  });
+// check for flash offline / corrupted (delayed).
+  timers.flashReport = setTimeout(flashReport,6000);
+});
+
+var mobiles=['ipad','iphone','ipod','android'];
+var device=navigator.platform.toLowerCase();
+for (var i=0,mobile; mobile=mobiles[i]; i++) {
+  if (device.indexOf(mobile)>=0) {$('#footer').css('position','static'); break;}
+}
+$.ajaxPrefilter(function(s, orig, xhr){
+  if (s.type.toLowerCase() == "post" && !s.crossDomain) {
+    s.data = s.data || "";
+    s.data += s.data?"&":"";
+    s.data += "csrf_token="+csrf_token;
+  }
+});
+</script>
+<style>
+#header {
+    z-index: 102 !important;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-pack: justify;
+    -ms-flex-pack: justify;
+    justify-content: space-between;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+}
+#header unraid-i18n-host {
+    font-size: 16px;
+    margin-left: auto;
+    height: 100%;
+}
+
+/**
+ * Tools page, rotate the Downgrade icon to prevent needing to add a new icon to the icon font.
+ * The pseudo element is targeted here otherwise the rotation of the span would mess up spacing with the text.
+ */
+a[href="/Tools/Downgrade"] .icon-update:before {
+    display: inline-block; /* required otherwise the rotation won't work */
+    rotate: 180deg;
+}
+</style>
+<script src="/plugins/dynamix.my.servers/unraid-components/_nuxt/unraid-components.client-cd1b3939.js"></script></head>
+<body>
+ <div id="template">
+  <div class="upgrade_notice" style="display:none"></div>
+  <div id="header" class="">
+   <div class="logo">
+   <a href="https://unraid.net" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 222.36 39.04"><defs><linearGradient id="header-logo" x1="47.53" y1="79.1" x2="170.71" y2="-44.08" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e32929"/><stop offset="1" stop-color="#ff8d30"/></linearGradient></defs><title>unraid.net</title><path d="M146.7,29.47H135l-3,9h-6.49L138.93,0h8l13.41,38.49h-7.09L142.62,6.93l-5.83,16.88h8ZM29.69,0V25.4c0,8.91-5.77,13.64-14.9,13.64S0,34.31,0,25.4V0H6.54V25.4c0,5.17,3.19,7.92,8.25,7.92s8.36-2.75,8.36-7.92V0ZM50.86,12v26.5H44.31V0h6.11l17,26.5V0H74V38.49H67.9ZM171.29,0h6.54V38.49h-6.54Zm51.07,24.69c0,9-5.88,13.8-15.17,13.8H192.67V0H207.3c9.18,0,15.06,4.78,15.06,13.8ZM215.82,13.8c0-5.28-3.3-8.14-8.52-8.14h-8.08V32.77h8c5.33,0,8.63-2.8,8.63-8.08ZM108.31,23.92c4.34-1.6,6.93-5.28,6.93-11.55C115.24,3.68,110.18,0,102.48,0H88.84V38.49h6.55V5.66h6.87c3.8,0,6.21,1.82,6.21,6.71s-2.41,6.76-6.21,6.76H98.88l9.21,19.36h7.53Z" fill="url(#header-logo)"/></svg>
+</a>
+   <unraid-i18n-host><unraid-header-os-version></unraid-header-os-version></unraid-i18n-host>
+   </div>
+   <script>
+window.LOCALE_DATA = '%7B%22%22%3A%7B%22%7B0%7D%20%7B1%7D%20Key%5Cu2026%22%3A%22%7B0%7D%20%7B1%7D%20Key%5Cu2026%22%2C%22%7B0%7D%20devices%22%3A%22%7B0%7D%20devices%22%2C%22%7B0%7D%20out%20of%20%7B1%7D%20allowed%20devices%20%5Cu2013%20upgrade%20your%20key%20to%20support%20more%20devices%22%3A%22%7B0%7D%20out%20of%20%7B1%7D%20allowed%20devices%20%5Cu2013%20upgrade%20your%20key%20to%20support%20more%20devices%22%2C%22%7B0%7D%20out%20of%20%7B1%7D%20devices%22%3A%22%7B0%7D%20out%20of%20%7B1%7D%20devices%22%2C%22%7B0%7D%20Release%20Notes%22%3A%22%7B0%7D%20Release%20Notes%22%2C%22%7B0%7D%20Signed%20In%20Successfully%22%3A%22%7B0%7D%20Signed%20In%20Successfully%22%2C%22%7B0%7D%20Signed%20Out%20Successfully%22%3A%22%7B0%7D%20Signed%20Out%20Successfully%22%2C%22%7B0%7D%20Update%20Available%22%3A%22%7B0%7D%20Update%20Available%22%2C%22%7B1%7D%20Key%20%7B0%7D%20Successfully%22%3A%22%7B0%7D%20Key%20%7B1%7D%20Successfully%22%2C%22%3Cp%3EIt%20is%20not%20possible%20to%20use%20a%20Trial%20key%20with%20an%20existing%20Unraid%20OS%20installation.%3C%2Fp%3E%3Cp%3EYou%20may%20purchase%20a%20license%20key%20corresponding%20to%20this%20USB%20Flash%20device%20to%20continue%20using%20this%20installation.%3C%2Fp%3E%22%3A%22%3Cp%3EIt%20is%20not%20possible%20to%20use%20a%20Trial%20key%20with%20an%20existing%20Unraid%20OS%20installation%3C%2Fp%3E%3Cp%3EYou%20may%20purchase%20a%20license%20key%20corresponding%20to%20this%20USB%20Flash%20device%20to%20continue%20using%20this%20installation.%3C%2Fp%3E%22%2C%22%3Cp%3EPlease%20refresh%20the%20page%20to%20ensure%20you%20load%20your%20latest%20configuration%3C%2Fp%3E%22%3A%22%3Cp%3EPlease%20refresh%20the%20page%20to%20ensure%20you%20load%20your%20latest%20configuration%3C%2Fp%3E%22%2C%22%3Cp%3ERegister%20for%20Connect%20by%20signing%20in%20to%20your%20Unraid.net%20account%3C%2Fp%3E%22%3A%22%3Cp%3ERegister%20for%20Connect%20by%20signing%20in%20to%20your%20Unraid.net%20account%3C%2Fp%3E%22%2C%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key.%3C%2Fp%3E%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%3C%2Fp%3E%22%3A%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key%3C%2Fp%3E%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%3C%2Fp%3E%22%2C%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key.%3C%2Fp%3E%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20is%20blacklisted.%3C%2Fp%3E%22%3A%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key%3C%2Fp%3E%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20is%20blacklisted.%3C%2Fp%3E%22%2C%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device.%3C%2Fp%3E%3Cp%3EYou%20may%20also%20attempt%20to%20Purchase%20or%20Replace%20your%20key.%3C%2Fp%3E%22%3A%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%3Cp%3EYou%20may%20also%20attempt%20to%20Purchase%20or%20Replace%20your%20key.%3C%2Fp%3E%22%2C%22%3Cp%3EThere%20are%20multiple%20license%20key%20files%20present%20on%20your%20USB%20flash%20device%20and%20none%20of%20them%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20remove%20all%20key%20files%2C%20except%20the%20one%20you%20want%20to%20replace%2C%20from%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device.%3C%2Fp%3E%3Cp%3EAlternately%20you%20may%20purchase%20a%20license%20key%20for%20this%20USB%20flash%20device.%3C%2Fp%3E%3Cp%3EIf%20you%20want%20to%20replace%20one%20of%20your%20license%20keys%20with%20a%20new%20key%20bound%20to%20this%20USB%20Flash%20device%2C%20please%20first%20remove%20all%20other%20key%20files%20first.%3C%2Fp%3E%22%3A%22%3Cp%3EThere%20are%20multiple%20license%20key%20files%20present%20on%20your%20USB%20flash%20device%20and%20none%20of%20them%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20remove%20all%20key%20files%2C%20except%20the%20one%20you%20want%20to%20replace%2C%20from%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%3Cp%3EAlternately%20you%20may%20purchase%20a%20license%20key%20for%20this%20USB%20flash%20device%3C%2Fp%3E%3Cp%3EIf%20you%20want%20to%20replace%20one%20of%20your%20license%20keys%20with%20a%20new%20key%20bound%20to%20this%20USB%20Flash%20device%2C%20please%20first%20remove%20all%20other%20key%20files%20first.%3C%2Fp%3E%22%2C%22%3Cp%3EThere%20is%20a%20physical%20problem%20accessing%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%22%3A%22%3Cp%3EThere%20is%20a%20physical%20problem%20accessing%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%22%2C%22%3Cp%3EThere%20is%20a%20problem%20with%20your%20USB%20Flash%20device%3C%2Fp%3E%22%3A%22%3Cp%3EThere%20is%20a%20problem%20with%20your%20USB%20Flash%20device%3C%2Fp%3E%22%2C%22%3Cp%3EThis%20USB%20Flash%20boot%20device%20has%20been%20blacklisted.%20This%20can%20occur%20as%20a%20result%20of%20transferring%20your%20license%20key%20to%20a%20replacement%20USB%20Flash%20device%2C%20and%20you%20are%20currently%20booted%20from%20your%20old%20USB%20Flash%20device.%3C%2Fp%3E%3Cp%3EA%20USB%20Flash%20device%20may%20also%20be%20blacklisted%20if%20we%20discover%20the%20serial%20number%20is%20not%20unique%20%5Cu2013%20this%20is%20common%20with%20USB%20card%20readers.%3C%2Fp%3E%22%3A%22%3Cp%3EThis%20USB%20Flash%20boot%20device%20has%20been%20blacklisted.%20This%20can%20occur%20as%20a%20result%20of%20transferring%20your%20license%20key%20to%20a%20replacement%20USB%20Flash%20device%2C%20and%20you%20are%20currently%20booted%20from%20your%20old%20USB%20Flash%20device.%3C%2Fp%3E%3Cp%3EA%20USB%20Flash%20device%20may%20also%20be%20blacklisted%20if%20we%20discover%20the%20serial%20number%20is%20not%20unique%20%5Cu2013%20this%20is%20common%20with%20USB%20card%20readers.%3C%2Fp%3E%22%2C%22%3Cp%3EThis%20USB%20Flash%20device%20has%20an%20invalid%20GUID.%20Please%20try%20a%20different%20USB%20Flash%20device%3C%2Fp%3E%22%3A%22%3Cp%3EThis%20USB%20Flash%20device%20has%20an%20invalid%20GUID.%20Please%20try%20a%20different%20USB%20Flash%20device%3C%2Fp%3E%22%2C%22%3Cp%3ETo%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%20Alternately%2C%20you%20may%20request%20a%20Trial%20extension.%3C%2Fp%3E%22%3A%22%3Cp%3ETo%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%20Alternately%2C%20you%20may%20request%20a%20Trial%20extension.%3C%2Fp%3E%22%2C%22%3Cp%3ETo%20support%20more%20storage%20devices%20as%20your%20server%20grows%2C%20click%20Upgrade%20Key.%3C%2Fp%3E%22%3A%22%3Cp%3ETo%20support%20more%20storage%20devices%20as%20your%20server%20grows%2C%20click%20Upgrade%20Key.%3C%2Fp%3E%22%2C%22%3Cp%3EYou%20have%20used%20all%20your%20Trial%20extensions.%20To%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%3A%22%3Cp%3EYou%20have%20used%20all%20your%20Trial%20extensions.%20To%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20%3Cem%3ETrial%3C%2Fem%3E%20key%20includes%20all%20the%20functionality%20and%20device%20support%20of%20an%20%3Cem%3EUnleashed%3C%2Fem%3E%20key.%3C%2Fp%3E%3Cp%3EAfter%20your%20%3Cem%3ETrial%3C%2Fem%3E%20has%20reached%20expiration%2C%20your%20server%20%3Cstrong%3Estill%20functions%20normally%3C%2Fstrong%3E%20until%20the%20next%20time%20you%20Stop%20the%20array%20or%20reboot%20your%20server.%3C%2Fp%3E%3Cp%3EAt%20that%20point%20you%20may%20either%20purchase%20a%20license%20key%20or%20request%20a%20%3Cem%3ETrial%3C%2Fem%3E%20extension.%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20%3Cb%3ETrial%3C%2Fb%3E%20key%20includes%20all%20the%20functionality%20and%20device%20support%20of%20an%20%3Cb%3EUnleashed%3C%2Fb%3E%20key%3C%2Fp%3E%3Cp%3EAfter%20your%20%3Cb%3ETrial%3C%2Fb%3E%20has%20reached%20expiration%2C%20your%20server%20%3Ci%3Estill%20functions%20normally%3C%2Fi%3E%20until%20the%20next%20time%20you%20Stop%20the%20array%20or%20reboot%20your%20server%3C%2Fp%3E%3Cp%3EAt%20that%20point%20you%20may%20either%20purchase%20a%20license%20key%20or%20request%20a%20%3Ci%3ETrial%3C%2Fi%3E%20extension.%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device.%3C%2Fp%3E%3Cp%3EIf%20you%20do%20not%20have%20a%20backup%20copy%20of%20your%20license%20key%20file%20you%20may%20attempt%20to%20recover%20your%20key.%3C%2Fp%3E%3Cp%3EIf%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%3Cp%3EIf%20you%20do%20not%20have%20a%20backup%20copy%20of%20your%20license%20key%20file%20you%20may%20attempt%20to%20recover%20your%20key%20with%20your%20Unraid.net%20account%3C%2Fp%3E%3Cp%3EIf%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device.%3C%2Fp%3E%3Cp%3EYou%20may%20attempt%20to%20recover%20your%20key%20with%20your%20Unraid.net%20account.%3C%2Fp%3E%3Cp%3EIf%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%3Cp%3EIf%20you%20do%20not%20have%20a%20backup%20copy%20of%20your%20license%20key%20file%20you%20may%20attempt%20to%20recover%20your%20key%20with%20your%20Unraid.net%20account%3C%2Fp%3E%3Cp%3EIf%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20server%20will%20not%20be%20usable%20until%20you%20purchase%20a%20Registration%20key%20or%20install%20a%20free%2030%20day%20%3Cem%3ETrial%3C%2Fem%3E%20key.%20A%20%3Cem%3ETrial%3C%2Fem%3E%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key.%3C%2Fp%3E%3Cp%3ERegistration%20keys%20are%20bound%20to%20your%20USB%20Flash%20boot%20device%20serial%20number%20%28GUID%29.%20Please%20use%20a%20high%20quality%20name%20brand%20device%20at%20least%201GB%20in%20size.%3C%2Fp%3E%3Cp%3ENote%3A%20USB%20memory%20card%20readers%20are%20generally%20not%20supported%20because%20most%20do%20not%20present%20unique%20serial%20numbers.%3C%2Fp%3E%3Cp%3E%3Cstrong%3EImportant%3A%3C%2Fstrong%3E%3C%2Fp%3E%3Cul%20class%3D%5C%22list-disc%20pl-16px%5C%22%3E%3Cli%3EPlease%20make%20sure%20your%20server%20time%20is%20accurate%20to%20within%205%20minutes%3C%2Fli%3E%3Cli%3EPlease%20make%20sure%20there%20is%20a%20DNS%20server%20specified%3C%2Fli%3E%3C%2Ful%3E%22%3A%22%3Cp%3EYour%20server%20will%20not%20be%20usable%20until%20you%20purchase%20a%20Registration%20key%20or%20install%20a%20free%2030%20day%20%3Cem%3ETrial%3C%2Fem%3E%20key.%20A%20%3Cem%3ETrial%3C%2Fem%3E%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key.%3C%2Fp%3E%3Cp%3ERegistration%20keys%20are%20bound%20to%20your%20USB%20Flash%20boot%20device%20serial%20number%20%28GUID%29.%20Please%20use%20a%20high%20quality%20name%20brand%20device%20at%20least%201GB%20in%20size.%3C%2Fp%3E%3Cp%3ENote%3A%20USB%20memory%20card%20readers%20are%20generally%20not%20supported%20because%20most%20do%20not%20present%20unique%20serial%20numbers.%3C%2Fp%3E%3Cp%3E%3Ci%3EImportant%3A%3C%2Fi%3E%3C%2Fp%3E%3Cul%20class%3D%5C%22list-disc%20pl-16px%5C%22%3E%3Cli%3EPlease%20make%20sure%20your%20server%20time%20is%20accurate%20to%20within%205%20minutes%3C%2Fli%3E%3Cli%3EPlease%20make%20sure%20there%20is%20a%20DNS%20server%20specified%3C%2Fli%3E%3E%3C%2Ful%3E%22%2C%22%3Cp%3EYour%20Trial%20key%20requires%20an%20internet%20connection.%3C%2Fp%3E%3Cp%3E%3Ca%20href%3D%5C%22%2FSettings%2FNetworkSettings%5C%22%20class%3D%5C%22underline%5C%22%3EPlease%20check%20Settings%20%3E%20Network%3C%2Fa%3E%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20Trial%20key%20requires%20an%20internet%20connection%3C%2Fp%3E%3Cp%3E%3Ca%20href%3D%5C%22%2FSettings%2FNetworkSettings%5C%22%20class%3D%5C%22underline%5C%22%3EPlease%20check%20Settings%20%3E%20Network%3C%2Fa%3E%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%3C%2Fp%3E%22%2C%22A%20Trial%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key%22%3A%22A%20Trial%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key%22%2C%22Acklowledge%20that%20you%20have%20made%20a%20Flash%20Backup%20to%20enable%20this%20action%22%3A%22Acklowledge%20that%20you%20have%20made%20a%20Flash%20Backup%20to%20enable%20this%20action%22%2C%22ago%22%3A%22ago%22%2C%22All%20you%20need%20is%20an%20active%20internet%20connection%2C%20an%20Unraid.net%20account%2C%20and%20the%20Connect%20plugin.%20Get%20started%20by%20installing%20the%20plugin.%22%3A%22All%20you%20need%20is%20an%20active%20internet%20connection%2C%20an%20Unraid.net%20account%2C%20and%20the%20Connect%20plugin.%20Get%20started%20by%20installing%20the%20plugin.%22%2C%22Attached%20Storage%20Devices%22%3A%22Attached%20Storage%20Devices%22%2C%22Backing%20up...this%20may%20take%20a%20few%20minutes%22%3A%22Backing%20up...this%20may%20take%20a%20few%20minutes%22%2C%22Basic%22%3A%22Basic%22%2C%22Begin%20downgrade%20to%20%7B0%7D%22%3A%22Begin%20downgrade%20to%20%7B0%7D%22%2C%22Beta%22%3A%22Beta%22%2C%22Blacklisted%20USB%20Flash%20GUID%22%3A%22Blacklisted%20USB%20Flash%20GUID%22%2C%22BLACKLISTED%22%3A%22BLACKLISTED%22%2C%22Calculating%20trial%20expiration%5Cu2026%22%3A%22Calculating%20trial%20expiration%5Cu2026%22%2C%22Callback%20redirect%20type%20not%20present%20or%20incorrect%22%3A%22Callback%20redirect%20type%20not%20present%20or%20incorrect%22%2C%22Cancel%22%3A%22Cancel%22%2C%22Cannot%20access%20your%20USB%20Flash%20boot%20device%22%3A%22Cannot%20access%20your%20USB%20Flash%20boot%20device%22%2C%22Cannot%20validate%20Unraid%20Trial%20key%22%3A%22Cannot%20validate%20Unraid%20Trial%20key%22%2C%22Check%20for%20OS%20Updates%22%3A%22Check%20for%20OS%20Updates%22%2C%22check%20for%20OS%20updates%22%3A%22check%20for%20OS%20updates%22%2C%22Check%20for%20Prereleases%22%3A%22Check%20for%20Prereleases%22%2C%22Checking%20WAN%20IPs%5Cu2026%22%3A%22Checking%20WAN%20IPs%5Cu2026%22%2C%22Checking...%22%3A%22Checking...%22%2C%22Checkout%20the%20Connect%20Documentation%22%3A%22Checkout%20the%20Connect%20Documentation%22%2C%22Click%20to%20close%20modal%22%3A%22Click%20to%20close%20modal%22%2C%22Click%20to%20Copy%20LAN%20IP%20%7B0%7D%22%3A%22Click%20to%20copy%20LAN%20IP%20%7B0%7D%22%2C%22Close%20Dropdown%22%3A%22Close%20Dropdown%22%2C%22Close%20Modal%22%3A%22Close%20Modal%22%2C%22Close%22%3A%22Close%22%2C%22Configure%20Connect%20Features%22%3A%22Configure%20Connect%20Features%22%2C%22Confirm%20and%20start%20update%22%3A%22Confirm%20and%20start%20update%22%2C%22Connected%22%3A%22Connected%22%2C%22Contact%20Support%22%3A%22Contact%20Support%22%2C%22Copied%22%3A%22Copied%22%2C%22Copy%20Key%20URL%22%3A%22Copy%20Key%20URL%22%2C%22Copy%20your%20Key%20URL%3A%20%7B0%7D%22%3A%22Copy%20your%20Key%20URL%3A%20%7B0%7D%22%2C%22Create%20Flash%20Backup%22%3A%22Create%20Flash%20Backup%22%2C%22Current%20Version%20%7B0%7D%22%3A%22Current%20Version%20%7B0%7D%22%2C%22Current%20Version%3A%20Unraid%20%7B0%7D%22%3A%22Current%20Version%3A%20Unraid%20%7B0%7D%22%2C%22Customizable%20Dashboard%20Tiles%22%3A%22Customizable%20Dashboard%20Tiles%22%2C%22day%22%3A%22%7Bn%7D%20day%20%7C%20%7Bn%7D%20days%22%2C%22Deep%20Linking%22%3A%22Deep%20Linking%22%2C%22DNS%20issue%2C%20unable%20to%20resolve%20wanip4.unraid.net%22%3A%22DNS%20issue%2C%20unable%20to%20resolve%20wanip4.unraid.net%22%2C%22Downgrade%20Unraid%20OS%20to%20%7B0%7D%22%3A%22Downgrade%20Unraid%20OS%20to%20%7B0%7D%22%2C%22Downgrade%20Unraid%20OS%22%3A%22Downgrade%20Unraid%20OS%22%2C%22Downgrades%20are%20only%20recommended%20if%20you%27re%20unable%20to%20solve%20a%20critical%20issue.%22%3A%22Downgrades%20are%20only%20recommended%20if%20you%26apos%3Bre%20unable%20to%20solve%20a%20critical%20issue.%22%2C%22Download%20the%20Diagnostics%20zip%20then%20please%20open%20a%20bug%20report%20on%20our%20forums%20with%20a%20description%20of%20the%20issue%20along%20with%20your%20diagnostics.%22%3A%22Download%20the%20Diagnostics%20zip%20then%20please%20open%20a%20bug%20report%20on%20our%20forums%20with%20a%20description%20of%20the%20issue%20along%20with%20your%20diagnostics.%22%2C%22Download%20unraid-api%20Logs%22%3A%22Download%20unraid-api%20Logs%22%2C%22Dynamic%20Remote%20Access%22%3A%22Dynamic%20Remote%20Access%22%2C%22Enhance%20your%20experience%20with%20Unraid%20Connect%22%3A%22Enhance%20your%20experience%20with%20Unraid%20Connect%22%2C%22Enhance%20your%20Unraid%20experience%20with%20Connect%22%3A%22Enhance%20your%20Unraid%20experience%20with%20Connect%22%2C%22Enhance%20your%20Unraid%20experience%22%3A%22Enhance%20your%20Unraid%20experience%22%2C%22Error%20creatiing%20a%20trial%20key.%20Please%20try%20again%20later.%22%3A%22Error%20creatiing%20a%20trial%20key.%20Please%20try%20again%20later.%22%2C%22Error%22%3A%22Error%22%2C%22Expired%20%7B0%7D%22%3A%22Expired%20%7B0%7D%22%2C%22Expired%22%3A%22Expired%22%2C%22Expires%20at%20%7B0%7D%22%3A%22Expires%20at%20%7B0%7D%22%2C%22Expires%20in%20%7B0%7D%22%3A%22Expires%20in%20%7B0%7D%22%2C%22Extend%20Trial%22%3A%22Extend%20Trial%22%2C%22Extending%20your%20free%20trial%20by%2015%20days%22%3A%22Extending%20your%20free%20trial%20by%2015%20days%22%2C%22Extension%20Installed%22%3A%22Extension%20Installed%22%2C%22Failed%20to%20%7B0%7D%20%7B1%7D%20Key%22%3A%22Failed%20to%20%7B0%7D%20%7B1%7D%20Key%22%2C%22Failed%20to%20install%20key%22%3A%22Failed%20to%20install%20key%22%2C%22Failed%20to%20update%20Connect%20account%20configuration%22%3A%22Failed%20to%20update%20Connect%20account%20configuration%22%2C%22Fix%20Error%22%3A%22Fix%20Error%22%2C%22Flash%20Backup%20is%20not%20available.%20Navigate%20to%20%7B0%7D%2FMain%2FSettings%2FFlash%20to%20try%20again%20then%20come%20back%20to%20this%20page.%22%3A%22Flash%20Backup%20is%20not%20available.%20Navigate%20to%20%7B0%7D%2FMain%2FSettings%2FFlash%20to%20try%20again%20then%20come%20back%20to%20this%20page.%22%2C%22Flash%20GUID%20Error%22%3A%22Flash%20GUID%20Error%22%2C%22Flash%20GUID%20required%20to%20check%20replacement%20status%22%3A%22Flash%20GUID%20required%20to%20check%20replacement%20status%22%2C%22Flash%20GUID%22%3A%22Flash%20GUID%22%2C%22Flash%20Product%22%3A%22Flash%20Product%22%2C%22Flash%20Vendor%22%3A%22Flash%20Vendor%22%2C%22Get%20an%20overview%20of%20your%20server%27s%20state%2C%20storage%20space%2C%20apps%20and%20VMs%20status%2C%20and%20more.%22%3A%22Get%20an%20overview%20of%20your%20server%26apos%3Bs%20state%2C%20storage%20space%2C%20apps%20and%20VMs%20status%2C%20and%20more.%22%2C%22Get%20Started%22%3A%22Get%20Started%22%2C%22Go%20to%20Connect%20plugin%20settings%22%3A%22Go%20to%20Connect%20plugin%20settings%22%2C%22Go%20to%20Connect%22%3A%22Go%20to%20Connect%22%2C%22Go%20to%20Management%20Access%20Now%22%3A%22Go%20to%20Management%20Access%20Now%22%2C%22Go%20to%20Tools%20%3E%20Management%20Access%20to%20activate%20the%20Flash%20Backup%20feature%20and%20ensure%20your%20backup%20is%20up-to-date.%22%3A%22Go%20to%20Tools%20%3E%20Management%20Access%20to%20activate%20the%20Flash%20Backup%20feature%20and%20ensure%20your%20backup%20is%20up-to-date.%22%2C%22Go%20to%20Tools%20%3E%20Management%20Access%20to%20ensure%20your%20backup%20is%20up-to-date.%22%3A%22Go%20to%20Tools%20%3E%20Management%20Access%20to%20ensure%20your%20backup%20is%20up-to-date.%22%2C%22Go%20to%20Tools%20%3E%20Registration%20to%20fix%22%3A%22Go%20to%20Tools%20%3E%20Registration%20to%20fix%22%2C%22Go%20to%20Tools%20%3E%20Update%22%3A%22Go%20to%20Tools%20%3E%20Update%22%2C%22hour%22%3A%22%7Bn%7D%20hour%20%7C%20%7Bn%7D%20hours%22%2C%22I%20have%20made%20a%20Flash%20Backup%22%3A%22I%20have%20made%20a%20Flash%20Backup%22%2C%22If%20you%20are%20asked%20to%20supply%20logs%2C%20please%20open%20a%20support%20request%20on%20our%20Contact%20Page%20and%20reply%20to%20the%20email%20message%20you%20receive%20with%20your%20logs%20attached.%22%3A%22If%20you%20are%20asked%20to%20supply%20logs%2C%20please%20open%20a%20support%20request%20on%20our%20Contact%20Page%20and%20reply%20to%20the%20email%20message%20you%20receive%20with%20your%20logs%20attached.%22%2C%22Ignore%20this%20message%20if%20you%20are%20currently%20connected%20via%20Remote%20Access%20or%20VPN.%22%3A%22Ignore%20this%20message%20if%20you%20are%20currently%20connected%20via%20Remote%20Access%20or%20VPN.%22%2C%22In%20the%20rare%20event%20you%20need%20to%20downgrade%20we%20ask%20that%20you%20please%20provide%20us%20with%20Diagnostics%20so%20we%20can%20investigate%20your%20issue.%22%3A%22In%20the%20rare%20event%20you%20need%20to%20downgrade%20we%20ask%20that%20you%20please%20provide%20us%20with%20Diagnostics%20so%20we%20can%20investigate%20your%20issue.%22%2C%22Install%20Connect%22%3A%22Install%20Connect%22%2C%22Install%20Recovered%22%3A%22Install%20Recovered%22%2C%22Install%20Replaced%22%3A%22Install%20Replaced%22%2C%22Install%22%3A%22Install%22%2C%22Installed%22%3A%22Installed%22%2C%22Installing%20Extended%20Trial%22%3A%22Installing%20Extended%20Trial%22%2C%22Installing%20Extended%22%3A%22Installing%20Extended%22%2C%22Installing%20Recovered%22%3A%22Installing%20Recovered%22%2C%22Installing%20Replaced%22%3A%22Installing%20Replaced%22%2C%22Installing%22%3A%22Installing%22%2C%22Introducing%20Unraid%20Connect%22%3A%22Introducing%20Unraid%20Connect%22%2C%22Invalid%20API%20Key%20Format%22%3A%22Invalid%20API%20Key%20Format%22%2C%22Invalid%20API%20Key%22%3A%22Invalid%20API%20Key%22%2C%22Invalid%20installation%22%3A%22Invalid%20installation%22%2C%22Keyfile%20required%20to%20check%20replacement%20status%22%3A%22Keyfile%20required%20to%20check%20replacement%20status%22%2C%22LAN%20IP%20%7B0%7D%22%3A%22LAN%20IP%20%7B0%7D%22%2C%22LAN%20IP%20Copied%22%3A%22LAN%20IP%20Copied%22%2C%22LAN%20IP%22%3A%22LAN%20IP%22%2C%22Last%20checked%3A%20%7B0%7D%22%3A%22Last%20checked%3A%20%7B0%7D%22%2C%22Learn%20more%20about%20the%20error%22%3A%22Learn%20more%20about%20the%20error%22%2C%22Learn%20more%20and%20fix%22%3A%22Learn%20more%20and%20fix%22%2C%22Learn%20More%22%3A%22Learn%20More%22%2C%22Learn%20more%22%3A%22Learn%20more%22%2C%22Let%27s%20Unleash%20your%20Hardware%21%22%3A%22Let%26apos%3Bs%20Unleash%20your%20Hardware%21%22%2C%22License%20key%20actions%22%3A%22License%20key%20actions%22%2C%22License%20key%20type%22%3A%22License%20key%20type%22%2C%22License%20Management%22%3A%22License%20Management%22%2C%22Loading%22%3A%22Loading%22%2C%22Manage%20Unraid.net%20Account%20in%20new%20tab%22%3A%22Manage%20Unraid.net%20Account%20in%20new%20tab%22%2C%22Manage%20Unraid.net%20Account%22%3A%22Manage%20Unraid.net%20Account%22%2C%22Manage%20your%20license%20keys%20at%20any%20time%20via%20the%20My%20Keys%20section.%22%3A%22Manage%20your%20license%20keys%20at%20any%20time%20via%20the%20My%20Keys%20section.%22%2C%22Manage%20Your%20Server%20Within%20Connect%22%3A%22Manage%20Your%20Server%20Within%20Connect%22%2C%22minute%22%3A%22%7Bn%7D%20minute%20%7C%20%7Bn%7D%20minutes%22%2C%22Missing%20key%20file%22%3A%22Missing%20key%20file%22%2C%22month%22%3A%22%7Bn%7D%20month%20%7C%20%7Bn%7D%20months%22%2C%22Multiple%20License%20Keys%20Present%22%3A%22Multiple%20License%20Keys%20Present%22%2C%22Never%20ever%20be%20left%20without%20a%20backup%20of%20your%20config.%20If%20you%20need%20to%20change%20flash%20drives%2C%20generate%20a%20backup%20from%20Connect%20and%20be%20up%20and%20running%20in%20minutes.%22%3A%22Never%20ever%20be%20left%20without%20a%20backup%20of%20your%20config.%20If%20you%20need%20to%20change%20flash%20drives%2C%20generate%20a%20backup%20from%20Connect%20and%20be%20up%20and%20running%20in%20minutes.%22%2C%22New%20Version%3A%20%7B0%7D%22%3A%22New%20Version%3A%20%7B0%7D%22%2C%22No%20downgrade%20available%22%3A%22No%20downgrade%20available%22%2C%22No%20Flash%22%3A%22No%20Flash%22%2C%22No%20Keyfile%22%3A%22No%20Keyfile%22%2C%22No%20thanks%22%3A%22No%20thanks%22%2C%22No%20USB%20flash%20configuration%20data%22%3A%22No%20USB%20flash%20configuration%20data%22%2C%22On%20January%201st%2C%202023%20SSL%20certificates%20for%20unraid.net%20were%20deprecated.%20You%20MUST%20provision%20a%20new%20SSL%20certificate%20to%20use%20our%20new%20myunraid.net%20domain.%20You%20can%20do%20this%20on%20the%20Settings%20%3E%20Management%20Access%20page.%22%3A%22On%20January%201st%2C%202023%20SSL%20certificates%20for%20unraid.net%20were%20deprecated.%20You%20MUST%20provision%20a%20new%20SSL%20certificate%20to%20use%20our%20new%20myunraid.net%20domain.%20You%20can%20do%20this%20on%20the%20Settings%20%3E%20Management%20Access%20page.%22%2C%22Online%20Flash%20Backup%22%3A%22Online%20Flash%20Backup%22%2C%22Open%20a%20bug%20report%22%3A%22Open%20a%20bug%20report%22%2C%22Open%20Dropdown%22%3A%22Open%20Dropdown%22%2C%22Opens%20Connect%20in%20new%20tab%22%3A%22Opens%20Connect%20in%20new%20tab%22%2C%22Original%20release%20date%20%7B0%7D%22%3A%22Original%20release%20date%20%7B0%7D%22%2C%22Performing%20actions%22%3A%22Performing%20actions%22%2C%22Please%20confirm%20the%20update%20details%20below%22%3A%22Please%20confirm%20the%20update%20details%20below%22%2C%22Please%20fix%20any%20errors%20and%20try%20again.%22%3A%22Please%20fix%20any%20errors%20and%20try%20again.%22%2C%22Please%20keep%20this%20window%20open%20while%20we%20perform%20some%20actions%22%3A%22Please%20keep%20this%20window%20open%20while%20we%20perform%20some%20actions%22%2C%22Please%20keep%20this%20window%20open%22%3A%22Please%20keep%20this%20window%20open%22%2C%22Please%20sign%20out%20then%20sign%20back%20in%20to%20refresh%20your%20API%20key.%22%3A%22Please%20sign%20out%20then%20sign%20back%20in%20to%20refresh%20your%20API%20key.%22%2C%22Please%20wait%20while%20the%20page%20reloads%20to%20install%20your%20trial%20key%22%3A%22Please%20wait%20while%20the%20page%20reloads%20to%20install%20your%20trial%20key%22%2C%22Plus%20more%20on%20the%20way%22%3A%22Plus%20more%20on%20the%20way%22%2C%22Plus%22%3A%22Plus%22%2C%22Pro%22%3A%22Pro%22%2C%22Purchase%20Key%22%3A%22Purchase%20Key%22%2C%22Purchase%22%3A%22Purchase%22%2C%22Ready%20to%20Install%20Key%22%3A%22Ready%20to%20Install%20Key%22%2C%22Ready%20to%20update%20Connect%20account%20configuration%22%3A%22Ready%20to%20update%20Connect%20account%20configuration%22%2C%22Real-time%20Monitoring%22%3A%22Real-time%20Monitoring%22%2C%22Reboot%20Now%20to%20Downgrade%20to%20%7B0%7D%22%3A%22Reboot%20Now%20to%20Downgrade%20to%20%7B0%7D%22%2C%22Reboot%20Now%20to%20Downgrade%22%3A%22Reboot%20Now%20to%20Downgrade%22%2C%22Reboot%20Now%20to%20Update%20to%20%7B0%7D%22%3A%22Reboot%20Now%20to%20Update%20to%20%7B0%7D%22%2C%22Reboot%20Now%20to%20Update%22%3A%22Reboot%20Now%20to%20Update%22%2C%22Reboot%20Required%20for%20Downgrade%20to%20%7B0%7D%22%3A%22Reboot%20Required%20for%20Downgrade%20to%20%7B0%7D%22%2C%22Reboot%20Required%20for%20Downgrade%22%3A%22Reboot%20Required%20for%20Downgrade%22%2C%22Reboot%20Required%20for%20Update%20to%20%7B0%7D%22%3A%22Reboot%20Required%20for%20Update%20to%20%7B0%7D%22%2C%22Reboot%20Required%20for%20Update%22%3A%22Reboot%20Required%20for%20Update%22%2C%22Rebooting%20will%20likely%20solve%20this.%22%3A%22Rebooting%20will%20likely%20solve%20this.%22%2C%22Receive%20the%20latest%20and%20greatest%20for%20Unraid%20OS.%20Whether%20it%20new%20features%2C%20security%20patches%2C%20or%20bug%20fixes%20%5Cu2013%20keeping%20your%20server%20up-to-date%20ensures%20the%20best%20experience%20that%20Unraid%20has%20to%20offer.%22%3A%22Receive%20the%20latest%20and%20greatest%20for%20Unraid%20OS.%20Whether%20it%20new%20features%2C%20security%20patches%2C%20or%20bug%20fixes%20%5Cu2013%20keeping%20your%20server%20up-to-date%20ensures%20the%20best%20experience%20that%20Unraid%20has%20to%20offer.%22%2C%22Recover%20Key%22%3A%22Recover%20Key%22%2C%22Recovered%22%3A%22Recovered%22%2C%22Redeem%20Activation%20Code%22%3A%22Redeem%20Activation%20Code%22%2C%22Registered%20on%22%3A%22Registered%20on%22%2C%22Registered%20to%22%3A%22Registered%20to%22%2C%22Registration%20key%20%2F%20USB%20Flash%20GUID%20mismatch%22%3A%22Registration%20key%20%2F%20USB%20Flash%20GUID%20mismatch%22%2C%22Reload%22%3A%22Reload%22%2C%22Remark%3A%20Unraid%27s%20WAN%20IPv4%20%7B0%7D%20does%20not%20match%20your%20client%27s%20WAN%20IPv4%20%7B1%7D.%22%3A%22Remark%3A%20Unraid%26apos%3Bs%20WAN%20IPv4%20%7B0%7D%20does%20not%20match%20your%20client%26apos%3Bs%20WAN%20IPv4%20%7B1%7D.%22%2C%22Remark%3A%20your%20WAN%20IPv4%20is%20%7B0%7D%22%3A%22Remark%3A%20your%20WAN%20IPv4%20is%20%7B0%7D%22%2C%22Replace%20Key%22%3A%22Replace%20Key%22%2C%22Replaced%22%3A%22Replaced%22%2C%22Restarting%20unraid-api%5Cu2026%22%3A%22Restarting%20unraid-api%5Cu2026%22%2C%22second%22%3A%22%7Bn%7D%20second%20%7C%20%7Bn%7D%20seconds%22%2C%22Server%20Up%20Since%20%7B0%7D%22%3A%22Server%20Up%20Since%20%7B0%7D%22%2C%22Servers%20equipped%20with%20a%20myunraid.net%20certificate%20can%20be%20managed%20directly%20from%20within%20the%20Connect%20web%20UI.%20Manage%20multiple%20servers%20from%20your%20phone%2C%20tablet%2C%20laptop%2C%20or%20PC%20in%20the%20same%20browser%20window.%22%3A%22Servers%20equipped%20with%20a%20myunraid.net%20certificate%20can%20be%20managed%20directly%20from%20within%20the%20Connect%20web%20UI.%20Manage%20multiple%20servers%20from%20your%20phone%2C%20tablet%2C%20laptop%2C%20or%20PC%20in%20the%20same%20browser%20window.%22%2C%22Set%20custom%20server%20tiles%20how%20you%20like%20and%20automatically%20display%20your%20server%27s%20banner%20image%20on%20your%20Connect%20Dashboard.%22%3A%22Set%20custom%20server%20tiles%20how%20you%20like%20and%20automatically%20display%20your%20server%26apos%3Bs%20banner%20image%20on%20your%20Connect%20Dashboard.%22%2C%22Settings%22%3A%22Settings%22%2C%22Sign%20In%20Failed%22%3A%22Sign%20In%20Failed%22%2C%22Sign%20In%20requires%20the%20local%20unraid-api%20to%20be%20running%22%3A%22Sign%20In%20requires%20the%20local%20unraid-api%20to%20be%20running%22%2C%22Sign%20In%20to%20utilize%20Unraid%20Connect%22%3A%22Sign%20In%20to%20utilize%20Unraid%20Connect%22%2C%22Sign%20In%20to%20your%20Unraid.net%20account%20to%20get%20started%22%3A%22Sign%20In%20to%20your%20Unraid.net%20account%20to%20get%20started%22%2C%22Sign%20In%20with%20Unraid.net%20Account%22%3A%22Sign%20In%20with%20Unraid.net%20Account%22%2C%22Sign%20Out%20Failed%22%3A%22Sign%20Out%20Failed%22%2C%22Sign%20Out%20of%20Unraid.net%22%3A%22Sign%20Out%20of%20Unraid.net%22%2C%22Sign%20Out%20requires%20the%20local%20unraid-api%20to%20be%20running%22%3A%22Sign%20Out%20requires%20the%20local%20unraid-api%20to%20be%20running%22%2C%22Signing%20in%20%7B0%7D%5Cu2026%22%3A%22Signing%20in%20%7B0%7D%5Cu2026%22%2C%22Signing%20In%22%3A%22Signing%20In%22%2C%22Signing%20out%20%7B0%7D%5Cu2026%22%3A%22Signing%20out%20%7B0%7D%5Cu2026%22%2C%22Signing%20Out%22%3A%22Signing%20Out%22%2C%22Something%20went%20wrong%22%3A%22Something%20went%20wrong%22%2C%22SSL%20certificates%20for%20unraid.net%20deprecated%22%3A%22SSL%20certificates%20for%20unraid.net%20deprecated%22%2C%22Stale%20Server%22%3A%22Stale%20Server%22%2C%22Stale%22%3A%22Stale%22%2C%22Start%20Free%2030%20Day%20Trial%22%3A%22Start%20Free%2030%20Day%20Trial%22%2C%22Starting%20your%20free%2030%20day%20trial%22%3A%22Starting%20your%20free%2030%20day%20trial%22%2C%22Success%21%22%3A%22Success%21%22%2C%22Thank%20you%20for%20choosing%20Unraid%20OS%21%22%3A%22Thank%20you%20for%20choosing%20Unraid%20OS%21%22%2C%22Thank%20you%20for%20installing%20Connect%21%22%3A%22Thank%20you%20for%20installing%20Connect%21%22%2C%22Thank%20you%20for%20purchasing%20an%20Unraid%20%7B0%7D%20Key%21%22%3A%22Thank%20you%20for%20purchasing%20an%20Unraid%20%7B0%7D%20Key%21%22%2C%22Thank%20you%20for%20upgrading%20to%20an%20Unraid%20%7B0%7D%20Key%21%22%3A%22Thank%20you%20for%20upgrading%20to%20an%20Unraid%20%7B0%7D%20Key%21%22%2C%22The%20Connect%20dashboard%20links%20to%20relevant%20sections%20of%20the%20webgui%2C%20allowing%20quick%20access%20to%20those%20settings%20and%20server%20sections.%22%3A%22The%20Connect%20dashboard%20links%20to%20relevant%20sections%20of%20the%20webgui%2C%20allowing%20quick%20access%20to%20those%20settings%20and%20server%20sections.%22%2C%22The%20logs%20may%20contain%20sensitive%20information%20so%20do%20not%20post%20them%20publicly.%22%3A%22The%20logs%20may%20contain%20sensitive%20information%20so%20do%20not%20post%20them%20publicly.%22%2C%22The%20primary%20method%20of%20support%20for%20Unraid%20Connect%20is%20through%20our%20forums%20and%20Discord.%22%3A%22The%20primary%20method%20of%20support%20for%20Unraid%20Connect%20is%20through%20our%20forums%20and%20Discord.%22%2C%22Then%20go%20to%20Tools%20%3E%20Registration%20to%20manually%20install%20it%22%3A%22Then%20go%20to%20Tools%20%3E%20Registration%20to%20manually%20install%20it%22%2C%22This%20may%20indicate%20a%20complex%20network%20that%20will%20not%20work%20with%20this%20Remote%20Access%20solution.%22%3A%22This%20may%20indicate%20a%20complex%20network%20that%20will%20not%20work%20with%20this%20Remote%20Access%20solution.%22%2C%22This%20update%20will%20require%20a%20reboot%22%3A%22This%20update%20will%20require%20a%20reboot%22%2C%22Toggle%20on%2Foff%20server%20accessibility%20with%20dynamic%20remote%20access.%20Automatically%20turn%20on%20UPnP%20and%20open%20a%20random%20WAN%20port%20on%20your%20router%20at%20the%20click%20of%20a%20button%20and%20close%20off%20access%20in%20seconds.%22%3A%22Toggle%20on%2Foff%20server%20accessibility%20with%20dynamic%20remote%20access.%20Automatically%20turn%20on%20UPnP%20and%20open%20a%20random%20WAN%20port%20on%20your%20router%20at%20the%20click%20of%20a%20button%20and%20close%20off%20access%20in%20seconds.%22%2C%22Too%20Many%20Devices%22%3A%22Too%20Many%20Devices%22%2C%22Transfer%20License%20to%20New%20Flash%22%3A%22Transfer%20License%20to%20New%20Flash%22%2C%22Trial%20Expired%2C%20see%20options%20below%22%3A%22Trial%20Expired%2C%20see%20options%20below%22%2C%22Trial%20Expired%22%3A%22Trial%20Expired%22%2C%22Trial%20Key%20Created%22%3A%22Trial%20Key%20Created%22%2C%22Trial%20Key%20Creation%20Failed%22%3A%22Trial%20Key%20Creation%20Failed%22%2C%22Trial%20Key%20Expired%20%7B0%7D%22%3A%22Trial%20Key%20Expired%20%7B0%7D%22%2C%22Trial%20Key%20Expired%20at%20%7B0%7D%22%3A%22Trial%20Key%20Expired%20at%20%7B0%7D%22%2C%22Trial%20Key%20Expires%20at%20%7B0%7D%22%3A%22Trial%20Key%20Expires%20at%20%7B0%7D%22%2C%22Trial%20Key%20Expires%20in%20%7B0%7D%22%3A%22Trial%20Key%20Expires%20in%20%7B0%7D%22%2C%22Trial%20Requires%20Internet%20Connection%22%3A%22Trial%20Requires%20Internet%20Connection%22%2C%22Trial%22%3A%22Trial%22%2C%22Unable%20to%20check%20for%20OS%20updates%22%3A%22Unable%20to%20check%20for%20OS%20updates%22%2C%22Unable%20to%20fetch%20client%20WAN%20IPv4%22%3A%22Unable%20to%20fetch%20client%20WAN%20IPv4%22%2C%22Unable%20to%20open%20release%20notes%22%3A%22Unable%20to%20open%20release%20notes%22%2C%22Unknown%20error%22%3A%22Unknown%20error%22%2C%22unlimited%22%3A%22unlimited%22%2C%22Unraid%20%7B0%7D%20Available%22%3A%22Unraid%20%7B0%7D%20Available%22%2C%22Unraid%20%7B0%7D%20Update%20Available%22%3A%22Unraid%20%7B0%7D%20Update%20Available%22%2C%22Unraid%20%7B0%7D%22%3A%22Unraid%20%7B0%7D%22%2C%22Unraid%20Connect%20Error%22%3A%22Unraid%20Connect%20Error%22%2C%22Unraid%20Connect%20Forums%22%3A%22Unraid%20Connect%20Forums%22%2C%22Unraid%20Connect%20Install%20Failed%22%3A%22Unraid%20Connect%20Install%20Failed%22%2C%22Unraid%20Contact%20Page%22%3A%22Unraid%20Contact%20Page%22%2C%22Unraid%20Discord%22%3A%22Unraid%20Discord%22%2C%22Unraid%20logo%20animating%20with%20a%20wave%20like%20effect%22%3A%22Unraid%20logo%20animating%20with%20a%20wave%20like%20effect%22%2C%22Unraid%20OS%20%7B0%7D%20Released%22%3A%22Unraid%20OS%20%7B0%7D%20Released%22%2C%22Unraid%20OS%20%7B0%7D%20Update%20Available%22%3A%22Unraid%20OS%20%7B0%7D%20Update%20Available%22%2C%22Unraid%20OS%20Update%20Available%22%3A%22Unraid%20OS%20Update%20Available%22%2C%22unraid-api%20is%20offline%22%3A%22unraid-api%20is%20offline%22%2C%22Up-to-date%22%3A%22Up-to-date%22%2C%22Update%20Available%22%3A%22Update%20Available%22%2C%22Update%20Unraid%20OS%20confirmation%20required%22%3A%22Update%20Unraid%20OS%20confirmation%20required%22%2C%22Update%20Unraid%20OS%22%3A%22Update%20Unraid%20OS%22%2C%22Updating%203rd%20party%20drivers%22%3A%22Updating%203rd%20party%20drivers%22%2C%22Upgrade%20Key%22%3A%22Upgrade%20Key%22%2C%22Upgrade%22%3A%22Upgrade%22%2C%22Uptime%20%7B0%7D%22%3A%22Uptime%20%7B0%7D%22%2C%22USB%20Flash%20device%20error%22%3A%22USB%20Flash%20device%20error%22%2C%22USB%20Flash%20has%20no%20serial%20number%22%3A%22USB%20Flash%20has%20no%20serial%20number%22%2C%22Version%20available%20for%20restore%20%7B0%7D%22%3A%22Version%20available%20for%20restore%20%7B0%7D%22%2C%22Version%3A%20%7B0%7D%22%3A%22Version%3A%20%7B0%7D%22%2C%22View%20Available%20Updates%22%3A%22View%20Available%20Updates%22%2C%22View%20Changelog%20%26%20Update%22%3A%22View%20Changelog%20%26%20Update%22%2C%22View%20Changelog%20for%20%7B0%7D%22%3A%22View%20Changelog%20for%20%7B0%7D%22%2C%22View%20Changelog%22%3A%22View%20Changelog%22%2C%22View%20release%20notes%22%3A%22View%20release%20notes%22%2C%22We%20recommend%20backing%20up%20your%20USB%20Flash%20Boot%20Device%20before%20starting%20the%20update.%22%3A%22We%20recommend%20backing%20up%20your%20USB%20Flash%20Boot%20Device%20before%20starting%20the%20update.%22%2C%22year%22%3A%22%7Bn%7D%20year%20%7C%20%7Bn%7D%20years%22%2C%22You%20can%20also%20manually%20create%20a%20new%20backup%20by%20clicking%20the%20Create%20Flash%20Backup%20button.%22%3A%22You%20can%20also%20manually%20create%20a%20new%20backup%20by%20clicking%20the%20Create%20Flash%20Backup%20button.%22%2C%22You%20can%20manually%20create%20a%20backup%20by%20clicking%20the%20Create%20Flash%20Backup%20button.%22%3A%22You%20can%20manually%20create%20a%20backup%20by%20clicking%20the%20Create%20Flash%20Backup%20button.%22%2C%22You%20have%20already%20activated%20the%20Flash%20Backup%20feature%20via%20the%20Unraid%20Connect%20plugin.%22%3A%22You%20have%20already%20activated%20the%20Flash%20Backup%20feature%20via%20the%20Unraid%20Connect%20plugin.%22%2C%22You%20have%20exceeded%20the%20number%20of%20devices%20allowed%20for%20your%20license.%20Please%20remove%20a%20device%20before%20adding%20another.%22%3A%22You%20have%20exceeded%20the%20number%20of%20devices%20allowed%20for%20your%20license.%20Please%20remove%20a%20device%20before%20adding%20another.%22%2C%22You%20have%20not%20activated%20the%20Flash%20Backup%20feature%20via%20the%20Unraid%20Connect%20plugin.%22%3A%22You%20have%20not%20activated%20the%20Flash%20Backup%20feature%20via%20the%20Unraid%20Connect%20plugin.%22%2C%22You%20may%20still%20update%20to%20releases%20dated%20prior%20to%20your%20update%20expiration%20date.%22%3A%22You%20may%20still%20update%20to%20releases%20dated%20prior%20to%20your%20update%20expiration%20date.%22%2C%22You%27re%20one%20step%20closer%20to%20enhancing%20your%20Unraid%20experience%22%3A%22You%26apos%3Bre%20one%20step%20closer%20to%20enhancing%20your%20Unraid%20experience%22%2C%22Your%20%7B0%7D%20Key%20has%20been%20replaced%21%22%3A%22Your%20%7B0%7D%20Key%20has%20been%20replaced%21%22%2C%22Your%20free%20Trial%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key%22%3A%22Your%20free%20Trial%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key%22%2C%22Your%20Trial%20has%20expired%22%3A%22Your%20Trial%20has%20expired%22%2C%22Your%20Trial%20key%20has%20been%20extended%21%22%3A%22Your%20Trial%20key%20has%20been%20extended%21%22%7D%7D';
+/**
+ * So we're not needing to modify DefaultLayout with an additional include, we'll add the Modals web component to the bottom of the body.
+ */
+const i18nHostWebComponent = 'unraid-i18n-host';
+const modalsWebComponent = 'unraid-modals';
+if (!document.getElementsByTagName(modalsWebComponent).length) {
+    const $body = document.getElementsByTagName('body')[0];
+    const $i18nHost = document.createElement(i18nHostWebComponent);
+    const $modals = document.createElement(modalsWebComponent);
+    $body.appendChild($i18nHost);
+    $i18nHost.appendChild($modals);
+}
+</script>
+
+<unraid-i18n-host>
+    <unraid-user-profile server="{&quot;apiKey&quot;:&quot;&quot;,&quot;apiVersion&quot;:&quot;&quot;,&quot;avatar&quot;:&quot;&quot;,&quot;caseModel&quot;:&quot;mid-tower&quot;,&quot;config&quot;:{&quot;valid&quot;:true,&quot;error&quot;:null},&quot;connectPluginInstalled&quot;:&quot;&quot;,&quot;connectPluginVersion&quot;:null,&quot;csrf&quot;:&quot;7D7248FFFB043369&quot;,&quot;dateTimeFormat&quot;:{&quot;date&quot;:&quot;%c&quot;,&quot;time&quot;:&quot;%R&quot;},&quot;description&quot;:&quot;Media server&quot;,&quot;deviceCount&quot;:&quot;4&quot;,&quot;email&quot;:&quot;&quot;,&quot;expireTime&quot;:0,&quot;extraOrigins&quot;:[],&quot;flashProduct&quot;:&quot;DataTraveler_3.0&quot;,&quot;flashVendor&quot;:&quot;Kingston&quot;,&quot;flashBackupActivated&quot;:&quot;&quot;,&quot;guid&quot;:&quot;0951-1666-DBDE-E751087604C8&quot;,&quot;hasRemoteApikey&quot;:false,&quot;internalPort&quot;:&quot;80&quot;,&quot;keyfile&quot;:&quot;s764LKmBOI8tKQSQXvd8LYCgY6kHMK2vZT9yzDYWXp9BxOdZoH33m5XdgMVpJ1cv1x1gOq2sXAahyEUcHxKSJTdHbNLSWbaghzAKUHTc1seUccEfZEmo8HFhHnj655-I9MBIkBxbPpxCxuLh-MmrpcTiNjCJcusDsuDCRuP4WQ-zAAlJYfxkIMDRrLn2QG3_qyVllJmoaQK1rTnaM06i-_p11InVjpXYU6-4GazFzl2R3Y5sNTyjOL4E3zjidlvVZZ1OsrDVyD5QzvfYrCDgs7DX1KzAq5RI5na0zdgoN2x6r0yeeGGZMZwrwT18MTqfrmXkb-_0FAKmHoxJU6Aoig&quot;,&quot;lanIp&quot;:&quot;10.0.0.63&quot;,&quot;locale&quot;:&quot;en_US&quot;,&quot;model&quot;:&quot;Custom&quot;,&quot;name&quot;:&quot;UNRAIDVM&quot;,&quot;osVersion&quot;:&quot;6.12.10&quot;,&quot;osVersionBranch&quot;:&quot;stable&quot;,&quot;protocol&quot;:&quot;http&quot;,&quot;rebootType&quot;:&quot;&quot;,&quot;regDevs&quot;:0,&quot;regGen&quot;:0,&quot;regGuid&quot;:&quot;0951-1666-DBDE-E751087604C8&quot;,&quot;regTo&quot;:&quot;Norbert Tak\u00e1cs&quot;,&quot;regTm&quot;:1690995084000,&quot;regTy&quot;:&quot;Basic&quot;,&quot;regExp&quot;:&quot;&quot;,&quot;registered&quot;:false,&quot;registeredTime&quot;:&quot;&quot;,&quot;site&quot;:&quot;http:\/\/10.0.0.63&quot;,&quot;state&quot;:&quot;BASIC&quot;,&quot;theme&quot;:{&quot;banner&quot;:false,&quot;bannerGradient&quot;:true,&quot;bgColor&quot;:&quot;&quot;,&quot;descriptionShow&quot;:true,&quot;metaColor&quot;:&quot;&quot;,&quot;name&quot;:&quot;white&quot;,&quot;textColor&quot;:&quot;&quot;},&quot;ts&quot;:1712409231,&quot;uptime&quot;:1712409005000,&quot;username&quot;:&quot;&quot;,&quot;wanFQDN&quot;:&quot;&quot;}"></unraid-user-profile>
+</unraid-i18n-host>
+  </div>
+  <a href="#" class="back_to_top" title="Back To Top"><i class="fa fa-arrow-circle-up"></i></a>
+<div id='menu'><div class='nav-tile'><div class='nav-item'><a href="/Dashboard" onclick="initab('/Dashboard')">Dashboard</a></div><div class='nav-item'><a href="/Main" onclick="initab('/Main')">Main</a></div><div class='nav-item'><a href="/Shares" onclick="initab('/Shares')">Shares</a></div><div class='nav-item'><a href="/Users" onclick="initab('/Users')">Users</a></div><div class='nav-item'><a href="/Settings" onclick="initab('/Settings')">Settings</a></div><div class='nav-item'><a href="/Plugins" onclick="initab('/Plugins')">Plugins</a></div><div class='nav-item'><a href="/Docker" onclick="initab('/Docker')">Docker</a></div><div class='nav-item active'><a href="/VMs" onclick="initab('/VMs')">VMs</a></div><div class='nav-item'><a href="/Apps" onclick="initab('/Apps')">Apps</a></div><div class='nav-item'><a href="/Stats" onclick="initab('/Stats')">Stats</a></div><div class='nav-item'><a href="/Tools" onclick="initab('/Tools')">Tools</a></div></div><div class='nav-tile right'><div class='nav-item LanguageButton util'><a href='#' onclick='LanguageButton();return false;' title="Switch Language"><b class='icon-u-switch system'></b><span>Switch Language</span></a></div><div class='nav-item LogoutButton util'><a href='#' onclick='LogoutButton();return false;' title="Logout"><b class='icon-u-logout system'></b><span>Logout</span></a></div><div class='nav-item TerminalButton util'><a href='#' onclick='TerminalButton();return false;' title="Terminal"><b class='icon-u-terminal system'></b><span>Terminal</span></a></div><div class='nav-item FeedbackButton util'><a href='#' onclick='FeedbackButton();return false;' title="Feedback"><b class='icon-u-chat system'></b><span>Feedback</span></a></div><div class='nav-item InfoButton util'><a href='#' onclick='InfoButton();return false;' title="Info"><b class='icon-u-display system'></b><span>Info</span></a></div><div class='nav-item LogButton util'><a href='#' onclick='LogButton();return false;' title="Log"><b class='icon-u-log system'></b><span>Log</span></a></div><div class='nav-item HelpButton util'><a href='#' onclick='HelpButton();return false;' title="Help"><b class='icon-u-help system'></b><span>Help</span></a></div><div class='nav-user'></div><div class='nav-user'></div><div class='nav-user show'><a id='board' href='#'><b id='bell' class='icon-u-bell system'></b></a></div></div></div>
+<!--
+##########################
+webGui/LanguageButton.page
+##########################
+-->
+<script>
+// hide switch button when no other language packs
+$(function(){$('.nav-item.LanguageButton').hide();});
+
+function LanguageButton() {
+  var locale = '';
+  if (locale) {
+    switchLanguage('');
+    $.cookie('locale',locale);
+  } else {
+    switchLanguage($.cookie('locale'));
+    $.removeCookie('locale');
+  }
+}
+
+function switchLanguage(lang) {
+  $.post('/webGui/include/LanguageReset.php',{lang:lang},function(){location.reload();});
+}
+</script>
+<!--
+########################
+webGui/LogoutButton.page
+########################
+-->
+<script>
+function LogoutButton() {
+  var id = window.setTimeout(null,0);
+  while (id--) window.clearTimeout(id);
+  window.location.href = '/logout';
+}
+</script>
+
+<!--
+##########################
+webGui/TerminalButton.page
+##########################
+-->
+<script>
+function TerminalButton() {
+  var d = new Date();
+  openTerminal('ttyd','Web Terminal '+d.getTime(),'');
+}
+</script>
+
+<!--
+##########################
+webGui/FeedbackButton.page
+##########################
+-->
+<script>
+function FeedbackButton() {
+  openChanges("feedback", "Feedback", "feedback");
+}
+</script>
+<!--
+######################
+webGui/InfoButton.page
+######################
+-->
+<script>
+function InfoButton() {
+  openChanges("system_information", "System Information", "sysinfo");
+}
+</script>
+<!--
+#####################
+webGui/LogButton.page
+#####################
+-->
+<script>
+function LogButton() {
+  openTerminal('syslog','syslog','');
+}
+</script>
+
+<!--
+######################
+webGui/HelpButton.page
+######################
+-->
+<script>
+function HelpButton() {
+  if ($('.nav-item.HelpButton').toggleClass('active').hasClass('active')) {
+    $('.inline_help').show('slow');
+    $.cookie('help','help');
+  } else {
+    $('.inline_help').hide('slow');
+    $.removeCookie('help');
+  }
+}
+</script>
+<!--
+##############################################
+plugins/community.applications/CA_notices.page
+##############################################
+-->
+
+
+
+<!--
+#################################################
+plugins/dynamix.plugin.manager/PluginHelpers.page
+#################################################
+-->
+<style>
+/* Additional CSS for when user supplies element */
+.ca_element_notice{padding-right:20px;width:100%;height:40px;line-height:40px;color:#e68a00;background:#feefb3;border-bottom:#e68a00 1px solid;text-align:center;font-size:1.4rem;z-index:900;}
+a.ca_PluginUpdateInstall{cursor:pointer;}
+span.ca_PluginUpdateDismiss{float:right;margin-right:20px;cursor:pointer;}
+span.bannerInfo {cursor:pointer;text-decoration:none;margin:0 12px 0 6px;}
+span.bannerInfo::before {content:"\f05a";font-family:fontAwesome;color:#e68a00;}
+</style>
+<script>
+const ca_args = {};
+
+function ca_refresh() {
+	refresh();
+}
+
+function ca_hidePluginUpdate(plugin,version,element) {
+	$.cookie(plugin,version);
+	$(element).hide();
+}
+
+function ca_pluginUpdateInstall(plugin) {
+	if (plugin == null) {
+		openPlugin(ca_args.cmd,ca_args.title,'','ca_refresh');
+		return;
+	}
+	ca_args.cmd = 'plugin update '+plugin;
+	ca_args.title = "Installing Update";
+	$.get('/plugins/dynamix.plugin.manager/include/ShowPlugins.php',{cmd:'alert'},function(data) {
+		if (data==0) {
+			// no alert message - proceed with update
+			setTimeout(ca_pluginUpdateInstall);
+		} else {
+			// show alert message and ask for confirmation
+			openAlert("showchanges /tmp/plugins/my_alerts.txt","Alert Message","ca_pluginUpdateInstall");
+		}
+	});
+}
+
+function caPluginUpdateCheck(plugin,options=[],callback) {
+	var pluginFilename = plugin.substr(0, plugin.lastIndexOf("."));
+	console.time("checkPlugin "+plugin);
+	console.log("checkPlugin  "+plugin);
+	$.post("/plugins/dynamix.plugin.manager/scripts/PluginAPI.php",{action:'checkPlugin',options:{plugin:plugin,name:options.name}},function(caAPIresult) {
+		console.groupCollapsed("Result checkPlugin "+plugin);
+		console.log(caAPIresult);
+		console.timeEnd("checkPlugin "+plugin);
+		console.groupEnd();
+		var result = JSON.parse(caAPIresult);
+
+		if ( options.debug == true ) result.updateAvailable = true;
+		if ( ! options.element && ! options.dontShow ) {
+			if ( result.updateAvailable ) {
+				var HTML = result.updateMessage+"<span class='bannerInfo fa fa-info-circle big' title=\"View Release Notes\" onclick='openChanges(\"showchanges /tmp/plugins/"+pluginFilename+".txt\",\"Release Notes\")'></span><a class='ca_PluginUpdateInstall' onclick='ca_pluginUpdateInstall(\""+plugin+"\")'>"+result.linkMessage+"</a>";
+				addBannerWarning(HTML,false,options.noDismiss);
+			}
+		} else {
+			if ( $.cookie(plugin) != result.version ) {
+				if ( result.updateAvailable ) {
+					var HTML = result.updateMessage+"<span class='bannerInfo fa fa-info-circle big' title=\"View Release Notes\" onclick='openChanges(\"showchanges /tmp/plugins/"+pluginFilename+".txt\",\"Release Notes\")'></span><a class='ca_PluginUpdateInstall' onclick='ca_pluginUpdateInstall(\""+plugin+"\")'>"+result.linkMessage+"</a>";
+					if ( ! options.noDismiss ) {
+						HTML = HTML.concat("<span class='ca_PluginUpdateDismiss'><i class='fa fa-close' onclick='ca_hidePluginUpdate(\""+plugin+"\",\""+result.version+"\",\""+options.element+"\")'></i></span>");
+					}
+					result.HTML = HTML;
+					if ( ! options.dontShow ) {
+						$(options.element).html(HTML);
+						$(options.element).addClass("ca_element_notice");
+					}
+				}
+			}
+		}
+		if ( typeof options === "function" ) {
+			callback = options;
+		}
+		if ( typeof callback === "function" ) {
+			callback(JSON.stringify(result));
+		}
+	});
+}
+</script>
+<div class='tabs'><div class='tab'><input type='radio' id='tab1' name='tabs'><div class='content shift'><div class='title'><span class='left'><i class='fa fa-clipboard title'></i>Update VM</span></div>
+<!--
+########################################
+plugins/dynamix.vm.manager/UpdateVM.page
+########################################
+-->
+<link type="text/css" rel="stylesheet" href="/plugins/dynamix.vm.manager/styles/dynamix.vm.manager.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/jquery.filetree.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/jquery.switchbutton.css?v=1700086926">
+
+<style>
+body{-webkit-overflow-scrolling:touch}
+.fileTree{background:#ededed;width:300px;max-height:150px;overflow-y:scroll;overflow-x:hidden;position:relative;z-index:100;display:none}
+#vmform table{margin-top:0}
+#vmform div.title + table{margin-top:0}
+#vmform table tr{vertical-align:top;line-height:40px}
+#vmform table tr td:nth-child(odd){width:300px;text-align:right;padding-right:10px}
+#vmform table tr td:nth-child(even){width:110px}
+#vmform table tr td:first-child{padding-right:30px}
+#vmform table tr td:last-child{width:inherit}
+#vmform .multiple{position:relative}
+#vmform .sectionbutton{position:absolute;left:2px;cursor:pointer;opacity:0.4;font-size:1.4rem;line-height:17px;z-index:10;transition-property:opacity,left;transition-duration:0.1s;transition-timing-function:linear}
+#vmform .sectionbutton.remove{top:0;opacity:0.3}
+#vmform .sectionbutton.add{bottom:0}
+#vmform .sectionbutton:hover{opacity:1.0}
+#vmform .sectiontab{position:absolute;top:2px;bottom:2px;left:0;width:6px;border-radius:3px;background-color:#DDDDDD;transition-property:background,width;transition-duration:0.1s;transition-timing-function:linear}
+#vmform .multiple:hover .sectionbutton{opacity:0.7;left:4px}
+#vmform .multiple:hover .sectionbutton.remove{opacity:0.6}
+#vmform .multiple:hover .sectiontab{background-color:#CCCCCC;width:8px}
+#vmform table.multiple{margin:10px 0;background:#ededed;background-size:800px 100%;background-position:-800px;background-repeat:no-repeat;background-clip:content-box;transition:background 0.3s linear}
+#vmform table.multiple:hover{background-position:0 0;}
+#vmform table.multiple td{padding:5px 0}
+span.advancedview_panel{display:none;line-height:16px;margin-top:1px}
+.basic{display:none}
+.advanced{/*Empty placeholder*/}
+.switch-button-label.off{color:inherit}
+#template_img{cursor:pointer}
+#template_img:hover{opacity:0.5}
+#template_img:hover i{opacity:1.0}
+.template_img_chooser_inner{display:inline-block;width:80px;margin-bottom:15px;margin-right:10px;text-align:center;}
+.template_img_chooser_inner img{width:48px;height:48px}
+.template_img_chooser_inner p{text-align:center;line-height:8px;}
+#template_img_chooser{width:560px;height:300px;overflow-y:scroll;position:relative}
+#template_img_chooser div:hover{background-color:#eee;cursor:pointer;}
+#template_img_chooser_outer{position:absolute;display:none;border-radius:5px;border:1px solid #e3e3e3;background:#ededed;z-index:10}
+#form_content{display:none}
+#vmform .four{overflow:hidden}
+#vmform .four label{float:left;display:table-cell;width:15%;}
+#vmform .four label:nth-child(4n+4){}
+#vmform .four label.cpu1{width:28%;height:16px;line-height:16px}
+#vmform .four label.cpu2{width:3%;height:16px;line-height:16px}
+#vmform .mac_generate{cursor:pointer;margin-left:-5px;color:#08C;font-size:1.3rem;transform:translate(0px, 2px)}
+#vmform .disk{display:none}
+#vmform .disk_preview{display:inline-block;color:#BBB;transform:translate(0px, 1px)}
+span#dropbox{border:1px solid #e3e3e3;background:#ededed;padding:28px 12px;line-height:72px;margin-right:16px;}
+i.fa-plus-circle,i.fa-minus-circle{margin-left:8px}
+input[type=checkbox]{margin-left:0}
+</style>
+
+<span class="status advancedview_panel" style="margin-top:-58px"><input type="checkbox" class="advancedview"></span>
+<div class="domain">
+	<form id="vmform" method="POST">
+	<input type="hidden" name="domain[type]" value="kvm" />
+	<input type="hidden" name="template[name]" value="Linux" />
+
+	<table>
+		<tr>
+			<td>Icon:</td>
+			<td>
+				<input type="hidden" name="template[icon]" id="template_icon" value="linux.png" />
+				<img id="template_img" src="/plugins/dynamix.vm.manager/templates/images/linux.png" width="48" height="48" title="Change Icon..."/>
+				<div id="template_img_chooser_outer">
+					<div id="template_img_chooser">
+					<div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/arch.png" basename="arch.png"><p>arch</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/centos.png" basename="centos.png"><p>centos</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/chromeos.png" basename="chromeos.png"><p>chromeos</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/coreos.png" basename="coreos.png"><p>coreos</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/debian.png" basename="debian.png"><p>debian</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/default.png" basename="default.png"><p>default</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/fedora.png" basename="fedora.png"><p>fedora</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/freebsd.png" basename="freebsd.png"><p>freebsd</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/libreelec.png" basename="libreelec.png"><p>libreelec</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/linux.png" basename="linux.png"><p>linux</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/openelec.png" basename="openelec.png"><p>openelec</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/opensuse.png" basename="opensuse.png"><p>opensuse</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/redhat.png" basename="redhat.png"><p>redhat</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/scientific.png" basename="scientific.png"><p>scientific</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/slackware.png" basename="slackware.png"><p>slackware</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/steamos.png" basename="steamos.png"><p>steamos</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/ubuntu.png" basename="ubuntu.png"><p>ubuntu</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/unraid.png" basename="unraid.png"><p>unraid</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/vyos.png" basename="vyos.png"><p>vyos</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/windows11.png" basename="windows11.png"><p>windows11</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/windows7.png" basename="windows7.png"><p>windows7</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/windows.png" basename="windows.png"><p>windows</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/windowsvista.png" basename="windowsvista.png"><p>windowsvista</p></div><div class="template_img_chooser_inner"><img src="/plugins/dynamix.vm.manager/templates/images/windowsxp.png" basename="windowsxp.png"><p>windowsxp</p></div>					</div>
+				</div>
+			</td>
+		</tr>
+	</table>
+
+	<table>
+		<tr style="line-height: 16px; vertical-align: middle;">
+			<td>Autostart:</td>
+			<td><div style="margin-left:-10px;padding-top:6px"><input type="checkbox" id="domain_autostart" name="domain[autostart]" style="display:none" class="autostart" value="1" ></div></td>
+		</tr>
+	</table>
+	<blockquote class="inline_help">
+		<p>If you want this VM to start with the array, set this to yes.</p>
+	</blockquote>
+
+	<div id="form_content">
+<link rel="stylesheet" href="/plugins/dynamix.vm.manager/scripts/codemirror/lib/codemirror.css?v=1700086926">
+<link rel="stylesheet" href="/plugins/dynamix.vm.manager/scripts/codemirror/addon/hint/show-hint.css?v=1700086926">
+<style type="text/css">
+	.CodeMirror { border: 1px solid #eee; cursor: text; margin-top: 15px; margin-bottom: 10px; }
+	.CodeMirror pre.CodeMirror-placeholder { color: #999; }
+</style>
+
+<div class="formview">
+<input type="hidden" name="template[os]" id="template_os" value="linux">
+<input type="hidden" name="domain[persistent]" value="1">
+<input type="hidden" name="domain[uuid]" value="c5825689-86ae-3de8-cb03-a875914c8803">
+<input type="hidden" name="domain[clock]" id="domain_clock" value="utc">
+<input type="hidden" name="domain[arch]" value="x86_64">
+<input type="hidden" name="domain[oldname]" id="domain_oldname" value="Linux">
+<input type="hidden" name="domain[memoryBacking]" id="domain_memorybacking" value="{&quot;nosharepages&quot;:{}}">
+
+	<table>
+		<tr>
+			<td>Name:</td>
+			<td><input type="text" name="domain[name]" id="domain_name" class="textTemplate" title="Name of virtual machine" placeholder="e.g. My Workstation" value="Linux" required /></td>
+		</tr>
+	</table>
+	<blockquote class="inline_help">
+		<p>Give the VM a name (e.g. Work, Gaming, Media Player, Firewall, Bitcoin Miner)</p>
+	</blockquote>
+
+	<table>
+		<tr class="advanced">
+			<td>Description:</td>
+			<td><input type="text" name="domain[desc]" title="description of virtual machine" placeholder="description of virtual machine (optional)" value="" /></td>
+		</tr>
+	</table>
+	<div class="advanced">
+		<blockquote class="inline_help">
+			<p>Give the VM a brief description (optional field).</p>
+		</blockquote>
+	</div>
+
+	<table>
+		<tr class="advanced">
+			<td>CPU Mode:</td>
+			<td>
+				<select name="domain[cpumode]" title="define type of cpu presented to this vm">
+				<option value='host-passthrough' selected>Host Passthrough (.@)</option><option value='custom'>Emulated (QEMU64)</option>				</select>
+			</td>
+		</tr>
+	</table>
+	<div class="advanced">
+		<blockquote class="inline_help">
+			<p>There are two CPU modes available to choose:</p>
+			<p>
+				<b>Host Passthrough</b><br>
+				With this mode, the CPU visible to the guest should be exactly the same as the host CPU even in the aspects that libvirt does not understand.  For the best possible performance, use this setting.
+			</p>
+			<p>
+				<b>Emulated</b><br>
+				If you are having difficulties with Host Passthrough mode, you can try the emulated mode which doesn't expose the guest to host-based CPU features.  This may impact the performance of your VM.
+			</p>
+		</blockquote>
+	</div>
+
+	<table>
+		<tr>
+			<td>Logical CPUs:</td>
+			<td>
+				<div class="textarea four">
+				<label for='vcpu0' class='cpu1 checkbox'>cpu 0 / 1<input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu0' value='0' ><span class='checkmark'></span></label><label for='vcpu1' class='cpu2 checkbox'><input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu1' value='1' ><span class='checkmark'></span></label><label for='vcpu2' class='cpu1 checkbox'>cpu 2 / 3<input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu2' value='2' ><span class='checkmark'></span></label><label for='vcpu3' class='cpu2 checkbox'><input type='checkbox' name='domain[vcpu][]' class='domain_vcpu' id='vcpu3' value='3' checked disabled><span class='checkmark'></span></label>				</div>
+			</td>
+		</tr>
+	</table>
+	<blockquote class="inline_help">
+		<p>The number of logical CPUs in your system is determined by multiplying the number of CPU cores on your processor(s) by the number of threads.</p>
+		<p>Select which logical CPUs you wish to allow your VM to use. (minimum 1).</p>
+	</blockquote>
+
+	<table>
+		<tr>
+			<td><span class="advanced">Initial </span>Memory:</td>
+			<td>
+				<select name="domain[mem]" id="domain_mem" class="narrow" title="define the amount memory">
+				<option value='131072'>128 MB</option><option value='262144'>256 MB</option><option value='524288'>512 MB</option><option value='1048576'>1024 MB</option><option value='1572864'>1536 MB</option><option value='2097152' selected>2048 MB</option><option value='2621440'>2560 MB</option><option value='3145728'>3072 MB</option><option value='3670016'>3584 MB</option><option value='4194304'>4096 MB</option><option value='4718592'>4608 MB</option><option value='5242880'>5120 MB</option><option value='5767168'>5632 MB</option><option value='6291456'>6144 MB</option><option value='6815744'>6656 MB</option><option value='7340032'>7168 MB</option><option value='7864320'>7680 MB</option>				</select>
+			</td>
+
+			<td class="advanced">Max Memory:</td>
+			<td class="advanced">
+				<select name="domain[maxmem]" id="domain_maxmem" class="narrow" title="define the maximum amount of memory">
+				<option value='131072'>128 MB</option><option value='262144'>256 MB</option><option value='524288'>512 MB</option><option value='1048576'>1024 MB</option><option value='1572864'>1536 MB</option><option value='2097152' selected>2048 MB</option><option value='2621440'>2560 MB</option><option value='3145728'>3072 MB</option><option value='3670016'>3584 MB</option><option value='4194304'>4096 MB</option><option value='4718592'>4608 MB</option><option value='5242880'>5120 MB</option><option value='5767168'>5632 MB</option><option value='6291456'>6144 MB</option><option value='6815744'>6656 MB</option><option value='7340032'>7168 MB</option><option value='7864320'>7680 MB</option>				</select>
+			</td>
+			<td></td>
+		</tr>
+	</table>
+	<div class="basic">
+		<blockquote class="inline_help">
+			<p>Select how much memory to allocate to the VM at boot.</p>
+		</blockquote>
+	</div>
+	<div class="advanced">
+		<blockquote class="inline_help">
+			<p>For VMs where no PCI devices are being passed through (GPUs, sound, etc.), you can set different values to initial and max memory to allow for memory ballooning.  If you are passing through a PCI device, only the initial memory value is used and the max memory value is ignored.  For more information on KVM memory ballooning, see <a href="http://www.linux-kvm.org/page/FAQ#Is_dynamic_memory_management_for_guests_supported.3F" target="_new">here</a>.</p>
+		</blockquote>
+	</div>
+
+		
+	<table>
+		<tr class="advanced">
+			<td>Machine:</td>
+			<td>
+				<select name="domain[machine]" class="narrow" id="domain_machine" title="Select the machine model.  i440fx will work for most.  Q35 for a newer machine model with PCIE">
+				<option value='pc-i440fx-7.2'>i440fx-7.2</option><option value='pc-i440fx-7.1'>i440fx-7.1</option><option value='pc-i440fx-7.0'>i440fx-7.0</option><option value='pc-i440fx-6.2'>i440fx-6.2</option><option value='pc-i440fx-6.1'>i440fx-6.1</option><option value='pc-i440fx-6.0'>i440fx-6.0</option><option value='pc-i440fx-5.2'>i440fx-5.2</option><option value='pc-i440fx-5.1'>i440fx-5.1</option><option value='pc-i440fx-5.0'>i440fx-5.0</option><option value='pc-i440fx-4.2'>i440fx-4.2</option><option value='pc-i440fx-4.1'>i440fx-4.1</option><option value='pc-i440fx-4.0'>i440fx-4.0</option><option value='pc-i440fx-3.1'>i440fx-3.1</option><option value='pc-i440fx-3.0'>i440fx-3.0</option><option value='pc-i440fx-2.12'>i440fx-2.12</option><option value='pc-i440fx-2.11'>i440fx-2.11</option><option value='pc-i440fx-2.10'>i440fx-2.10</option><option value='pc-i440fx-2.9'>i440fx-2.9</option><option value='pc-i440fx-2.8'>i440fx-2.8</option><option value='pc-i440fx-2.7'>i440fx-2.7</option><option value='pc-i440fx-2.6'>i440fx-2.6</option><option value='pc-i440fx-2.5'>i440fx-2.5</option><option value='pc-i440fx-2.4'>i440fx-2.4</option><option value='pc-i440fx-2.3'>i440fx-2.3</option><option value='pc-i440fx-2.2'>i440fx-2.2</option><option value='pc-i440fx-2.1'>i440fx-2.1</option><option value='pc-i440fx-2.0'>i440fx-2.0</option><option value='pc-i440fx-1.7'>i440fx-1.7</option><option value='pc-i440fx-1.6'>i440fx-1.6</option><option value='pc-i440fx-1.5'>i440fx-1.5</option><option value='pc-i440fx-1.4'>i440fx-1.4</option><option value='pc-q35-7.2'>Q35-7.2</option><option value='pc-q35-7.1' selected>Q35-7.1</option><option value='pc-q35-7.0'>Q35-7.0</option><option value='pc-q35-6.2'>Q35-6.2</option><option value='pc-q35-6.1'>Q35-6.1</option><option value='pc-q35-6.0'>Q35-6.0</option><option value='pc-q35-5.2'>Q35-5.2</option><option value='pc-q35-5.1'>Q35-5.1</option><option value='pc-q35-5.0'>Q35-5.0</option><option value='pc-q35-4.2'>Q35-4.2</option><option value='pc-q35-4.1'>Q35-4.1</option><option value='pc-q35-4.0.1'>Q35-4.0.1</option><option value='pc-q35-4.0'>Q35-4.0</option><option value='pc-q35-3.1'>Q35-3.1</option><option value='pc-q35-3.0'>Q35-3.0</option><option value='pc-q35-2.12'>Q35-2.12</option><option value='pc-q35-2.11'>Q35-2.11</option><option value='pc-q35-2.10'>Q35-2.10</option><option value='pc-q35-2.9'>Q35-2.9</option><option value='pc-q35-2.8'>Q35-2.8</option><option value='pc-q35-2.7'>Q35-2.7</option><option value='pc-q35-2.6'>Q35-2.6</option><option value='pc-q35-2.5'>Q35-2.5</option><option value='pc-q35-2.4'>Q35-2.4</option>				</select>
+			</td>
+		</tr>
+	</table>
+	<div class="advanced">
+		<blockquote class="inline_help">
+			<p>The machine type option primarily affects the success some users may have with various hardware and GPU pass through.  For more information on the various QEMU machine types, see these links:</p>
+			<a href="http://wiki.qemu.org/Documentation/Platforms/PC" target="_blank">http://wiki.qemu.org/Documentation/Platforms/PC</a><br>
+			<a href="http://wiki.qemu.org/Features/Q35" target="_blank">http://wiki.qemu.org/Features/Q35</a><br>
+			<p>As a rule of thumb, try to get your configuration working with i440fx first and if that fails, try adjusting to Q35 to see if that changes anything.</p>
+		</blockquote>
+	</div>
+
+	<table>
+		<tr class="advanced">
+			<td>BIOS:</td>
+			<td>
+				<select name="domain[ovmf]" id="domain_ovmf" class="narrow" title="Select the BIOS.  SeaBIOS will work for most.  OVMF requires a UEFI-compatable OS (e.g. Windows 8/2012, newer Linux distros) and if using graphics device passthrough it too needs UEFI" onchange="BIOSChange(this)">
+				<option value='0'>SeaBIOS</option><option value='1' selected>OVMF</option><option value='2'>OVMF TPM</option>				</select>
+			
+							<span id="USBBoottext" class="advanced" >Enable USB boot:</span>
+								
+				<select name="domain[usbboot]" id="domain_usbboot" class="narrow" title="define OS boot options"  onchange="USBBootChange(this)">
+				<option value='No' selected>No</option><option value='Yes'>Yes</option>				</select>
+				</td>
+		</tr>
+	</table>
+	<div class="advanced">
+		<blockquote class="inline_help">
+			<p>
+				<b>SeaBIOS</b><br>
+				is the default virtual BIOS used to create virtual machines and is compatible with all guest operating systems (Windows, Linux, etc.).
+			</p>
+			<p>
+				<b>OVMF</b><br>
+				(Open Virtual Machine Firmware) adds support for booting VMs using UEFI, but virtual machine guests must also support UEFI.  Assigning graphics devices to a OVMF-based virtual machine requires that the graphics device also support UEFI.
+			</p>
+			<p>
+				<b>OVMF TPM</b><br>
+				(Open Virtual Machine Firmware) adds support for booting VMs using UEFI with TPM and Secure Boot available, but virtual machine guests must also support UEFI.  Assigning graphics devices to a OVMF-based virtual machine requires that the graphics device also support UEFI.<br>
+			</p>
+			<p>
+				Once a VM is created this setting cannot be adjusted.
+			</p>
+			<p>
+				<b>USB Boot</b><br>
+				Adds support for booting from USB devices using UEFI. No device boot orders can be specified at the same time as this option.<br>
+			</p>
+		</blockquote>
+	</div>
+
+	<table class="domain_os windows">
+		<tr class="advanced">
+			<td>Hyper-V:</td>
+			<td>
+				<select name="domain[hyperv]" id="hyperv" class="narrow" title="Hyperv tweaks for Windows">
+				<option value='0' selected>No</option><option value='1'>Yes</option>				</select>
+			</td>
+		</tr>
+	</table>
+	<div class="domain_os windows">
+		<div class="advanced">
+			<blockquote class="inline_help">
+				<p>Exposes the guest to hyper-v extensions for Microsoft operating systems.</p>
+			</blockquote>
+		</div>
+	</div>
+
+	<table>
+		<tr class="advanced">
+			<td>USB Controller:</td>
+			<td>
+				<select name="domain[usbmode]" id="usbmode" class="narrow" title="Select the USB Controller to emulate.  Some OSes won&apos;t support USB3 (e.g. Windows 7/XP)">
+				<option value='usb2' selected>2.0 (EHCI)</option><option value='usb3'>3.0 (nec XHCI)</option><option value='usb3-qemu'>3.0 (qemu XHCI)</option>				</select>
+			</td>
+		</tr>
+	</table>
+	<div class="advanced">
+		<blockquote class="inline_help">
+			<p>
+				<b>USB Controller</b><br>
+				Select the USB Controller to emulate.  Some OSes won't support USB3 (e.g. Windows 7).  Qemu XHCI is the same code base as Nec XHCI but without several hacks applied over the years.  Recommended to try qemu XHCI before resorting to nec XHCI.
+			</p>
+		</blockquote>
+	</div>
+
+	<table>
+		<tr>
+			<td>OS Install ISO:</td>
+			<td>
+				<input type="text" name="media[cdrom]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfilter="iso" data-pickmatch="^[^.].*" data-pickroot="/mnt/user/isos/" class="cdrom" value="" placeholder="Click and Select cdrom image to install operating system">
+			</td>
+		</tr>
+		<tr class="advanced">
+			<td>OS Install CDRom Bus:</td>
+			<td>
+				<select name="media[cdrombus]" class="cdrom_bus narrow">
+				<option value='scsi'>SCSI</option><option value='sata' selected>SATA</option><option value='ide'>IDE</option><option value='usb'>USB</option>				</select>
+				Boot Order:
+				<input type="number" size="5" maxlength="5" id="cdboot" class="narrow bootorder" style="width: 50px;" name="media[cdromboot]"   title="Boot order"  value="" >
+				</td>
+			</td>
+		</tr>
+	</table>
+	<blockquote class="inline_help">
+		<p>Select the virtual CD-ROM (ISO) that contains the installation media for your operating system.  Clicking this field displays a list of ISOs found in the directory specified on the Settings page.</p>
+		<p class="advanced">
+			<b>CDRom Bus</b><br>
+			Specify what interface this virtual cdrom uses to connect inside the VM.
+		</p>
+	</blockquote>
+
+	<table class="domain_os windows">
+		<tr class="advanced">
+			<td>VirtIO Drivers ISO:</td>
+			<td>
+				<input type="text" name="media[drivers]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfilter="iso" data-pickmatch="^[^.].*" data-pickroot="/mnt/user/isos/" class="cdrom" value="" placeholder="Download, Click and Select virtio drivers image">
+			</td>
+		</tr>
+		<tr class="advanced">
+			<td>VirtIO Drivers CDRom Bus:</td>
+			<td>
+				<select name="media[driversbus]" class="cdrom_bus narrow">
+				<option value='scsi'>SCSI</option><option value='sata' selected>SATA</option><option value='ide'>IDE</option><option value='usb'>USB</option>				</select>
+			</td>
+		</tr>
+	</table>
+	<div class="domain_os windows">
+		<div class="advanced">
+			<blockquote class="inline_help">
+				<p>Specify the virtual CD-ROM (ISO) that contains the VirtIO Windows drivers as provided by the Fedora Project.  Download the latest ISO from here: <a href="https://docs.fedoraproject.org/en-US/quick-docs/creating-windows-virtual-machines-using-virtio-drivers/index.html#virtio-win-direct-downloads" target="_blank">https://docs.fedoraproject.org/en-US/quick-docs/creating-windows-virtual-machines-using-virtio-drivers/index.html#virtio-win-direct-downloads</a></p>
+				<p>When installing Windows, you will reach a step where no disk devices will be found.  There is an option to browse for drivers on that screen.  Click browse and locate the additional CD-ROM in the menu.  Inside there will be various folders for the different versions of Windows.  Open the folder for the version of Windows you are installing and then select the AMD64 subfolder inside (even if you are on an Intel system, select AMD64).  Three drivers will be found.  Select them all, click next, and the vDisks you have assigned will appear.</p>
+				<p>
+					<b>CDRom Bus</b><br>
+					Specify what interface this virtual cdrom uses to connect inside the VM.
+				</p>
+			</blockquote>
+		</div>
+	</div>
+
+			<table data-category="vDisk" data-multiple="true" data-minimum="1" data-maximum="24" data-index="0" data-prefix="Primary">
+			<tr>
+				<td>vDisk Location:</td>
+				<td>
+					<select name="disk[0][select]" class="disk_select narrow">
+					<option value="">None</option><option value='auto' selected>Auto</option><option value='manual'>Manual</option>					</select><input type="text" name="disk[0][new]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfolders="true" data-pickfilter="img,qcow,qcow2" data-pickmatch="^[^.].*" data-pickroot="/mnt/" class="disk" id="disk_0" value="/mnt/user/domains/Linux/vdisk1.img" placeholder="Separate sub-folder and image will be created based on Name"><div class="disk_preview"></div>
+				</td>
+			</tr>
+
+			<tr class="disk_file_options">
+				<td>vDisk Size:</td>
+				<td>
+					<input type="text" name="disk[0][size]" value="" class="narrow" placeholder="e.g. 10M, 1G, 10G...">
+				</td>
+			</tr>
+
+			<tr class="advanced disk_file_options">
+				<td>vDisk Type:</td>
+				<td>
+					<select name="disk[0][driver]" class="narrow" title="type of storage image">
+					<option value='raw' selected>raw</option><option value='qcow2'>qcow2</option>					</select>
+				</td>
+			</tr>
+
+			<tr class="advanced disk_bus_options">
+				<td>vDisk Bus:</td>
+				<td>
+					<select name="disk[0][bus]" class="disk_bus narrow">
+					<option value='virtio' selected>VirtIO</option><option value='scsi'>SCSI</option><option value='sata'>SATA</option><option value='ide'>IDE</option><option value='usb'>USB</option>					</select>
+				Boot Order:
+				<input type="number" size="5" maxlength="5" id="disk[0][boot]" class="narrow bootorder" style="width: 50px;" name="disk[0][boot]"   title="Boot order"  value="1" >
+				</td>
+			</tr>
+			<tr class="advanced disk_bus_options">
+				<td>Serial:</td>
+				<td>
+				<input type="text" size="20" maxlength="20" id="disk[0][serial]" class="narrow disk_serial" style="width: 200px;" name="disk[0][serial]"   title="Serial"  value="vdisk1" >
+				</td>
+			</tr>
+		</table>
+				<blockquote class="inline_help">
+			<p>
+				<b>vDisk Location</b><br>
+				Specify a path to a user share in which you wish to store the VM or specify an existing vDisk.  The primary vDisk will store the operating system for your VM.
+			</p>
+
+			<p>
+				<b>NOTE</b>: Unraid will automatically "dereference" vdisk paths when starting a VM.
+				That is, if a vdisk path is specified as being on a user share, we use the SYSTEM.LOCATION extended attribute to find out what physical disk the image exists on.
+				We then pass this path when starting a VM via qemu.  This ensures that VM I/O bypasses shfs (FUSE user share file system) for better performance.
+				It also means that a vdisk image file can be moved from one physical device to another without changing the VM XML file.
+			</p>
+
+			<p>
+				Example: /mnt/user/domains/Windows/vdisk1.img will be dereferenced to /mnt/cache/domains/Windows/vdisk1.img (for vdisk1.img physically located in the "cache" volume).
+			</p>
+
+			<p>
+				<b>vDisk Size</b><br>
+				Specify a number followed by a letter.  M for megabytes, G for gigabytes.
+			</p>
+
+			<p class="advanced">
+				<b>vDisk Type</b><br>
+				Select RAW for best performance.  QCOW2 implementation is still in development.
+			</p>
+
+			<p class="advanced">
+				<b>vDisk Bus</b><br>
+				Select virtio for best performance.
+			</p>
+			
+			<p class="advanced">
+				<b>vDisk Boot Order</b><br>
+				Specify the order the devices are used for booting.
+			</p>
+			
+			<p class="advanced">
+				<b>vDisk Serial</b><br>
+				Set the device serial number presented to the VM.
+			</p>
+
+			<p>Additional devices can be added/removed by clicking the symbols to the left.</p>
+		</blockquote>
+				<script type="text/html" id="tmplvDisk">
+		<table>
+			<tr>
+				<td>vDisk Location:</td>
+				<td>
+					<select name="disk[{{INDEX}}][select]" class="disk_select narrow">
+					<option value='auto' selected>Auto</option><option value='cache'>cache - 30.5 GB free</option><option value='disk1'>Disk 1 - 53.2 GB free</option><option value='disk2'>Disk 2 - 51.3 GB free</option><option value='manual'>Manual</option>					</select><input type="text" name="disk[{{INDEX}}][new]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfolders="true" data-pickfilter="img,qcow,qcow2" data-pickmatch="^[^.].*" data-pickroot="/mnt/" class="disk" id="disk_{{INDEX}}" value="" placeholder="Separate sub-folder and image will be created based on Name"><div class="disk_preview"></div>
+				</td>
+			</tr>
+
+			<tr class="disk_file_options">
+				<td>vDisk Size:</td>
+				<td>
+					<input type="text" name="disk[{{INDEX}}][size]" value="" class="narrow" placeholder="e.g. 10M, 1G, 10G...">
+				</td>
+			</tr>
+
+			<tr class="advanced disk_file_options">
+				<td>vDisk Type:</td>
+				<td>
+					<select name="disk[{{INDEX}}][driver]" class="narrow" title="type of storage image">
+					<option value='raw'>raw</option><option value='qcow2'>qcow2</option>					</select>
+				</td>
+			</tr>
+
+			<tr class="advanced disk_bus_options">
+				<td>vDisk Bus:</td>
+				<td>
+					<select name="disk[{{INDEX}}][bus]" class="disk_bus narrow">
+					<option value='virtio'>VirtIO</option><option value='scsi'>SCSI</option><option value='sata'>SATA</option><option value='ide'>IDE</option><option value='usb'>USB</option>					</select>
+				
+				Boot Order:
+				<input type="number" size="5" maxlength="5" id="disk[{{INDEX}}][boot]" class="narrow bootorder" style="width: 50px;" name="disk[{{INDEX}}][boot]"   title="Boot order"  value="" >
+				</td>
+				<tr class="advanced disk_bus_options">
+				<td>Serial:</td>
+				<td>
+				<input type="text" size="20" maxlength="20" id="disk[{{INDEX}}[serial]" class="narrow disk_serial" style="width: 200px;" name="disk[{{INDEX}}][serial]"   title="Serial"  value="" >
+				</td>
+			</tr>
+			</tr>
+		</table>
+	</script>
+
+			<table  data-category="Share" data-multiple="true" data-minimum="1" data-index="0" data-prefix="">
+
+			<tr class="advanced">
+				<td>Unraid Share Mode:</td>
+				<td>
+				<select name="shares[0][mode]" class="disk_bus narrow">
+					<option value='9p'>9p Mode</option>					<option value='virtiofs'>Virtiofs Mode</option>				</select>
+				Unraid Share:
+				<select name="shares[0][unraid]" class="disk_bus narrow"  onchange="ShareChange(this)" >
+				    <option value='0'>Manual</option><option value='1'>User:appdata</option><option value='2'>User:domains</option><option value='3'>User:isos</option><option value='4'>User:no_in_cache</option><option value='5'>User:system</option>				</select>
+				</td>
+				</tr>	
+
+			<tr class="advanced">
+				<td> 
+					<text id="shares[0]sourcetext" > Unraid Source Path: </text> 
+				</td>
+				<td>
+					<input type="text"  id="shares[0][source]" name="shares[0][source]" autocomplete="off" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt/" value="" placeholder="e.g. /mnt/user/..." title="path of Unraid share" />
+				</td>
+			</tr>
+
+			<tr  class="advanced">
+				<td><span id="shares[0][targettext]" >Unraid Mount Tag:</span></td>
+				<td>
+					<input type="text"  name="shares[0][target]" id="shares[0][target]" value="" placeholder="e.g. shares (name of mount tag inside vm)" title="mount tag inside vm" />
+				</td>
+			</tr>
+		</table>
+				<div>
+			<div class="advanced">
+				<blockquote class="inline_help">
+					<p>
+						<b>Unraid Share Mode</b><br>
+						Used to create a VirtFS mapping to a Linux-based guest.  Specify the mode you want to use either 9p or Virtiofs.
+					</p>
+
+					
+					<p>
+						<b>Unraid Share</b><br>
+						Set tag and path to match the selected Unraid share.
+					</p>
+
+					<p>
+						<b>Unraid Source Path</b><br>
+						Specify the path on the host here.
+					</p>
+
+					<p>
+						<b>Unraid Mount tag</b><br>
+						Specify the mount tag that you will use for mounting the VirtFS share inside the VM.  See this page for how to do this on a Linux-based guest: <a href="http://wiki.qemu.org/Documentation/9psetup" target="_blank">http://wiki.qemu.org/Documentation/9psetup</a>
+					</p>
+					<p>	
+						For Windows additional software needs to be installed: <a href="https://virtio-fs.gitlab.io/howto-windows.html" target="_blank">https://virtio-fs.gitlab.io/howto-windows.html</a>	
+					</p>
+
+					<p>Additional devices can be added/removed by clicking the symbols to the left.</p>
+				</blockquote>
+			</div>
+		</div>
+				<script type="text/html" id="tmplShare">
+		<table class="domain_os other">
+		<tr class="advanced">
+				<td>Unraid Share Mode:</td>
+				<td>
+				<select name="shares[{{INDEX}}][mode]" class="disk_bus narrow">
+					<option value='9p'>9p Mode</option>					<option value='virtiofs'>Virtiofs Mode</option>				</select>
+
+				Unraid Share:
+				
+				<select name="shares[{{INDEX}}][unraid]" class="disk_bus narrow"  onchange="ShareChange(this)" >
+					<option value='0'>Manual</option><option value='1'>User:appdata</option><option value='2'>User:domains</option><option value='3'>User:isos</option><option value='4'>User:no_in_cache</option><option value='5'>User:system</option>				</select>
+				</td>
+				</tr>	
+
+			<tr class="advanced">
+				<td>Unraid Source Path:</td>
+				<td>
+					<input type="text" name="shares[{{INDEX}}][source]" id="shares[{{INDEX}}][source]" autocomplete="off" spellcheck="false" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt/" value="" placeholder="e.g. /mnt/user/..." title="path of Unraid share" />
+				</td>
+			</tr>
+
+			<tr class="advanced">
+				<td>Unraid Mount Tag:</td>
+				<td>
+					<input type="text" name="shares[{{INDEX}}][target]" id="shares[{{INDEX}}][target]" value="" placeholder="e.g. shares (name of mount tag inside vm)" title="mount tag inside vm" />
+				</td>
+			</tr>
+		</table>
+	</script>
+
+			<table data-category="Graphics_Card" data-multiple="true" data-minimum="1" data-maximum="1" data-index="0" data-prefix="">
+			<tr>
+				<td>Graphics Card:</td>
+				<td>
+					<select name="gpu[0][id]" class="gpu narrow">
+					<option value='virtual' selected>Virtual</option>					</select>
+				</td>
+			</tr>
+
+							<tr class="advanced protocol">
+				<td>VM Console Protocol:</td>
+				<td>
+					<select id="protocol" name="gpu[0][protocol]" class="narrow" title="protocol for virtual console" onchange="ProtocolChange(this)" >
+					<option value='vnc' selected>VNC</option><option value='spice'>SPICE</option>					</select>
+				</td>
+				</tr>
+				<tr  id="copypasteline" name="copypaste" class="advanced ">
+					<td>VM Console enable Copy/paste:</td>
+				<td>
+					<select id="copypaste" name="gpu[0][copypaste]" class="narrow" >
+						<option value='no'>No</option><option value='yes'>Yes</option>					</select>
+			</tr>
+				<tr  id="autoportline" name="autoportline" class="advanced autoportline">
+					<td>VM Console AutoPort:</td>
+				<td>
+					<select id="autoport" name="gpu[0][autoport]" class="narrow" onchange="AutoportChange(this)">
+						<option value='yes' selected>Yes</option><option value='no'>No</option>					</select>
+				
+					<span id="Porttext"  hidden>VM Console Port:</span>
+				
+				    <input type="number" size="5" maxlength="5"  id="port" class="narrow" style="width: 50px;" name="gpu[0][port]"   title="port for virtual console"  value="-1"  hidden >
+				
+					<span id="WSPorttext" hidden>VM Console WS Port:</span>
+				
+				    <input type="number" size="5" maxlength="5" id="wsport" class="narrow" style="width: 50px;" name="gpu[0][wsport]"   title="wsport for virtual console"  value="-1" hidden >
+				</td>
+			</tr>
+
+			<tr class="advanced vncmodel">
+				<td>VM Console Video Driver:</td>
+				<td>
+					<select id="vncmodel" name="gpu[0][model]" class="narrow" title="video for VM Console">
+					<option value='cirrus'>Cirrus</option><option value='qxl' selected>QXL (best)</option><option value='vmvga'>vmvga</option>					</select>
+				</td>
+			</tr>
+
+			<tr class="vncpassword">
+				<td>VM Console Password:</td>
+				<td><input type="password" name="domain[password]" autocomplete='new-password' value="" title="password for VM Console" placeholder="password for VM Console (optional)" /></td>
+			</tr>
+			<tr class="advanced vnckeymap">
+				<td>VM Console Keyboard:</td>
+				<td>
+					<select name="gpu[0][keymap]" title="keyboard for VM Console">
+					<option value='ar'>Arabic (ar)</option><option value='hr'>Croatian (hr)</option><option value='cz'>Czech (cz)</option><option value='da'>Danish (da)</option><option value='nl'>Dutch (nl)</option><option value='en-gb'>English-United Kingdom (en-gb)</option><option value='en-us' selected>English-United States (en-us)</option><option value='es'>Español (es)</option><option value='et'>Estonian (et)</option><option value='fo'>Faroese (fo)</option><option value='fi'>Finnish (fi)</option><option value='fr'>French (fr)</option><option value='bepo'>French-Bépo (bepo)</option><option value='fr-be'>French-Belgium (fr-be)</option><option value='fr-ca'>French-Canadian (fr-ca)</option><option value='fr-ch'>French-Switzerland (fr-ch)</option><option value='de-ch'>German-Switzerland (de-ch)</option><option value='de'>German (de)</option><option value='hu'>Hungarian (hu)</option><option value='is'>Icelandic (is)</option><option value='it'>Italian (it)</option><option value='ja'>Japanese (ja)</option><option value='lv'>Latvian (lv)</option><option value='lt'>Lithuanian (lt)</option><option value='mk'>Macedonian (mk)</option><option value='no'>Norwegian (no)</option><option value='pl'>Polish (pl)</option><option value='pt'>Portuguese (pt)</option><option value='pt-br'>Portuguese-Brazil (pt-br)</option><option value='ru'>Russian (ru)</option><option value='sl'>Slovene (sl)</option><option value='sv'>Swedish (sv)</option><option value='th'>Thailand (th)</option><option value='tr'>Turkish (tr)</option>					</select>
+				</td>
+			</tr>
+						<tr class="wasadvanced romfile">
+				<td>Graphics ROM BIOS:</td>
+				<td>
+					<input type="text" name="gpu[0][rom]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfilter="rom,bin" data-pickmatch="^[^.].*" data-pickroot="/mnt/" value="" placeholder="Path to ROM BIOS file (optional)" title="Path to ROM BIOS file (optional)" />
+				</td>
+			</tr>
+		</table>
+				<blockquote class="inline_help">
+			<p>
+				<b>Graphics Card</b><br>
+				If you wish to assign a graphics card to the VM, select it from this list, otherwise leave it set to virtual.
+			</p>
+
+			<p class="advanced protocol">
+				<b>Virtual video protocol VNC/SPICE</b><br>
+				If you wish to assign a protocol type, specify one here. 
+			</p>
+
+			<p class="advanced protocol">
+				<b>Virtual enable copy paste for VNC/SPICE</b><br>
+				If you enable copy paste you need to install additional software on the client in addition to the QEMU agent if that has been installed. <a href="https://www.spice-space.org/download.html"  target="_blank">https://www.spice-space.org/download.html </a>is the location for spice-vdagent for both window and linux. Note copy paste function will not work with web spice viewer you need to use virt-viewer.
+			</p>
+
+			<p class="advanced protocol">
+				<b>Virtual auto port</b><br>
+				Set it you want to specify a manual port for VNC or Spice. VNC needs two ports where Spice only requires one. Leave as auto yes for the system to set. 
+			</p>
+
+			<p class="advanced vncmodel">
+				<b>Virtual Video Driver</b><br>
+				If you wish to assign a different video driver to use for a VM Console connection, specify one here.
+			</p>
+
+			<p class="vncpassword">
+				<b>Virtual Password</b><br>
+				If you wish to require a password to connect to the VM over a VM Console connection, specify one here.
+			</p>
+
+			<p class="advanced vnckeymap">
+				<b>Virtual Keyboard</b><br>
+				If you wish to assign a different keyboard layout to use for a VM Console connection, specify one here.
+			</p>
+
+			<p class="wasadvanced romfile">
+				<b>Graphics ROM BIOS</b><br>
+				If you wish to use a custom ROM BIOS for a Graphics card, specify one here.
+			</p>
+
+			<p>Additional devices can be added/removed by clicking the symbols to the left.</p>
+		</blockquote>
+				<script type="text/html" id="tmplGraphics_Card">
+		<table>
+			<tr>
+				<td>Graphics Card:</td>
+				<td>
+					<select name="gpu[{{INDEX}}][id]" class="gpu narrow">
+					<option value='' selected>None</option>					</select>
+				</td>
+			</tr>
+			<tr class="advanced romfile">
+				<td>Graphics ROM BIOS:</td>
+				<td>
+					<input type="text" name="gpu[{{INDEX}}][rom]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfilter="rom,bin" data-pickmatch="^[^.].*" data-pickroot="/mnt/" value="" placeholder="Path to ROM BIOS file (optional)" title="Path to ROM BIOS file (optional)" />
+				</td>
+			</tr>
+		</table>
+	</script>
+
+			<table data-category="Sound_Card" data-multiple="true" data-minimum="1" data-maximum="0" data-index="0" data-prefix="">
+			<tr>
+				<td>Sound Card:</td>
+				<td>
+					<select name="audio[0][id]" class="audio narrow">
+					<option value='' selected>None</option>					</select>
+				</td>
+			</tr>
+		</table>
+				<blockquote class="inline_help">
+			<p>Select a sound device to assign to your VM.  Most modern GPUs have a built-in audio device, but you can also select the on-board audio device(s) if present.</p>
+			<p>Additional devices can be added/removed by clicking the symbols to the left.</p>
+		</blockquote>
+				<script type="text/html" id="tmplSound_Card">
+		<table>
+			<tr>
+				<td>Sound Card:</td>
+				<td>
+					<select name="audio[{{INDEX}}][id]" class="audio narrow">
+										</select>
+				</td>
+			</tr>
+		</table>
+	</script>
+
+			<table data-category="Network" data-multiple="true" data-minimum="1" data-index="0" data-prefix="">
+			<tr class="advanced">
+				<td>Network MAC:</td>
+				<td>
+					<input type="text" name="nic[0][mac]" class="narrow" value="52:54:00:a5:55:9f" title="random mac, you can supply your own" /> <i class="fa fa-refresh mac_generate" title="re-generate random mac address"></i>
+				</td>
+			</tr>
+			<tr class="advanced">
+				<td>Network Source:</td>
+				<td>
+					<select name="nic[0][network]">
+					<option value='bridges' disabled>- bridges -</option><option value='virbr0'>virbr0</option><option value='br0' selected>br0</option>					</select>
+				</td>
+			</tr>
+			<tr class="advanced">
+				<td>Network Model:</td>
+				<td>
+					<select name="nic[0][model]">
+					<option value='virtio-net' selected>virtio-net</option><option value='virtio'>virtio</option><option value='e1000'>e1000</option><option value='rtl8139'>rtl8139</option><option value='vmxnet3'>vmxnet3</option>					</select>
+				</td>
+			</tr>
+			<tr class="advanced">
+				<td>Boot Order:</td>
+				<td>
+				<input type="number" size="5" maxlength="5" id="nic[0][boot]" class="narrow bootorder"   style="width: 50px;" name="nic[0][boot]"   title="Boot order"  value="" >
+				</td>
+			</tr>
+		</table>
+				<div class="advanced">
+			<blockquote class="inline_help">
+				<p>
+					<b>Network MAC</b><br>
+					By default, a random MAC address will be assigned here that conforms to the standards for virtual network interface controllers.  You can manually adjust this if desired.
+				</p>
+
+				<p>
+					<b>Network Source</b><br>
+					The default libvirt managed network bridge (virbr0) will be used, otherwise you may specify an alternative name for a private network to the host.
+				</p>
+
+				<p>
+					<b>Network Model</b><br>
+					Default and recommended is 'virtio-net', which gives improved stability. To improve performance 'virtio' can be selected, but this may lead to stability issues.
+				</p>
+
+				<p>Use boot order to set device as bootable and boot sequence.</p>
+
+				<p>Additional devices can be added/removed by clicking the symbols to the left.</p>
+			</blockquote>
+		</div>
+				<script type="text/html" id="tmplNetwork">
+		<table>
+			<tr class="advanced">
+				<td>Network MAC:</td>
+				<td>
+					<input type="text" name="nic[{{INDEX}}][mac]" class="narrow" value="" title="random mac, you can supply your own" /> <i class="fa fa-refresh mac_generate" title="re-generate random mac address"></i>
+				</td>
+			</tr>
+			<tr class="advanced">
+				<td>Network Source:</td>
+				<td>
+					<select name="nic[{{INDEX}}][network]">
+					<option value='bridges' disabled>- bridges -</option><option value='virbr0'>virbr0</option><option value='br0' selected>br0</option>					</select>
+				</td>
+			</tr>
+			<tr class="advanced">
+				<td>Network Model:</td>
+				<td>
+					<select name="nic[{{INDEX}}][model]">
+					<option value='virtio-net'>virtio-net</option><option value='virtio'>virtio</option><option value='e1000'>e1000</option><option value='vmxnet3'>vmxnet3</option>					</select>
+				</td>
+			</tr>
+			<tr class="advanced">
+				<td>Boot Order:</td>
+				<td>
+				<input type="number" size="5" maxlength="5" id="nic[{{INDEX}}][boot]" class="narrow bootorder"   style="width: 50px;" name="nic[{{INDEX}}][boot]"   title="Boot order"  value="" >
+				</td>
+			</tr>
+		</table>
+	</script>
+
+	<table>
+		<tr><td></td>
+		<td>Select&nbsp&nbspOptional&nbsp&nbspBoot Order</td></tr></div> 
+		<tr>
+			<td>USB Devices:</td>
+			<td>
+				<div class="textarea" style="width: 850px">
+										<label for="usb0">&nbsp&nbsp&nbsp&nbsp<input type="checkbox" name="usb[]" id="usb0" value="0627:0001" 						/> &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp <input type="checkbox" name="usbopt[0627:0001]" id="usbopt0" value="0627:0001" />&nbsp&nbsp&nbsp&nbsp&nbsp 
+						<input type="number" size="5" maxlength="5" id="usbboot0" class="narrow bootorder"   style="width: 50px;" name="usbboot[0627:0001]"   title="Boot order"  value="" >
+						Adomax Technology Co. QEMU USB Tablet (0627:0001)</label><br/>
+										</div>
+			</td>
+		</tr>
+	</table>
+	<blockquote class="inline_help">
+		<p>If you wish to assign any USB devices to your guest, you can select them from this list.</p>
+		<p>Use boot order to set device as bootable and boot sequence.</p>
+		<p>Select optional if you want device to be ignored when VM starts if not present.</p>
+	</blockquote>
+
+	<table>
+	<tr><td></td>
+		<td>Select&nbsp&nbspBoot Order</td></tr></div> 
+		<tr>
+		<tr>
+			<td>Other PCI Devices:</td>
+			<td>
+				<div class="textarea" style="width: 850px">
+				<i>None available</i>				</div>
+			</td>
+		</tr>
+	</table>
+	<blockquote class="inline_help">
+		<p>If you wish to assign any other PCI devices to your guest, you can select them from this list.</p>
+		<p>Use boot order to set device as bootable and boot sequence. Only NVMe and Network devices (PCI types 0108 and 02xx) supported for boot order.</p>
+	</blockquote>
+
+	<table>
+		<tr>
+			<td></td>
+			<td>
+							<input type="hidden" name="updatevm" value="1" />
+				<input type="button" value="Update" busyvalue="Updating..." readyvalue="Update" id="btnSubmit" />
+							<input type="button" value="Cancel" id="btnCancel" />
+			</td>
+		</tr>
+	</table>
+	</div>
+
+<div class="xmlview">
+	<textarea id="addcode" name="xmldesc" placeholder="Copy &amp; Paste Domain XML Configuration Here." autofocus>&lt;?xml version=&#039;1.0&#039; encoding=&#039;UTF-8&#039;?&gt;
+&lt;domain type=&#039;kvm&#039;&gt;
+  &lt;name&gt;Linux&lt;/name&gt;
+  &lt;uuid&gt;c5825689-86ae-3de8-cb03-a875914c8803&lt;/uuid&gt;
+  &lt;metadata&gt;
+    &lt;vmtemplate xmlns=&quot;unraid&quot; name=&quot;Linux&quot; icon=&quot;linux.png&quot; os=&quot;linux&quot;/&gt;
+  &lt;/metadata&gt;
+  &lt;memory unit=&#039;KiB&#039;&gt;2097152&lt;/memory&gt;
+  &lt;currentMemory unit=&#039;KiB&#039;&gt;2097152&lt;/currentMemory&gt;
+  &lt;memoryBacking&gt;
+    &lt;nosharepages/&gt;
+  &lt;/memoryBacking&gt;
+  &lt;vcpu placement=&#039;static&#039;&gt;1&lt;/vcpu&gt;
+  &lt;cputune&gt;
+    &lt;vcpupin vcpu=&#039;0&#039; cpuset=&#039;3&#039;/&gt;
+  &lt;/cputune&gt;
+  &lt;os&gt;
+    &lt;type arch=&#039;x86_64&#039; machine=&#039;pc-q35-7.1&#039;&gt;hvm&lt;/type&gt;
+    &lt;loader readonly=&#039;yes&#039; type=&#039;pflash&#039;&gt;/usr/share/qemu/ovmf-x64/OVMF_CODE-pure-efi.fd&lt;/loader&gt;
+    &lt;nvram&gt;/etc/libvirt/qemu/nvram/c5825689-86ae-3de8-cb03-a875914c8803_VARS-pure-efi.fd&lt;/nvram&gt;
+  &lt;/os&gt;
+  &lt;features&gt;
+    &lt;acpi/&gt;
+    &lt;apic/&gt;
+  &lt;/features&gt;
+  &lt;cpu mode=&#039;host-passthrough&#039; check=&#039;none&#039; migratable=&#039;on&#039;&gt;
+    &lt;topology sockets=&#039;1&#039; dies=&#039;1&#039; cores=&#039;1&#039; threads=&#039;1&#039;/&gt;
+    &lt;cache mode=&#039;passthrough&#039;/&gt;
+  &lt;/cpu&gt;
+  &lt;clock offset=&#039;utc&#039;&gt;
+    &lt;timer name=&#039;rtc&#039; tickpolicy=&#039;catchup&#039;/&gt;
+    &lt;timer name=&#039;pit&#039; tickpolicy=&#039;delay&#039;/&gt;
+    &lt;timer name=&#039;hpet&#039; present=&#039;no&#039;/&gt;
+  &lt;/clock&gt;
+  &lt;on_poweroff&gt;destroy&lt;/on_poweroff&gt;
+  &lt;on_reboot&gt;restart&lt;/on_reboot&gt;
+  &lt;on_crash&gt;restart&lt;/on_crash&gt;
+  &lt;devices&gt;
+    &lt;emulator&gt;/usr/local/sbin/qemu&lt;/emulator&gt;
+    &lt;disk type=&#039;file&#039; device=&#039;disk&#039;&gt;
+      &lt;driver name=&#039;qemu&#039; type=&#039;raw&#039; cache=&#039;writeback&#039;/&gt;
+      &lt;source file=&#039;/mnt/user/domains/Linux/vdisk1.img&#039;/&gt;
+      &lt;target dev=&#039;hdc&#039; bus=&#039;virtio&#039;/&gt;
+      &lt;serial&gt;vdisk1&lt;/serial&gt;
+      &lt;boot order=&#039;1&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x03&#039; slot=&#039;0x00&#039; function=&#039;0x0&#039;/&gt;
+    &lt;/disk&gt;
+    &lt;controller type=&#039;usb&#039; index=&#039;0&#039; model=&#039;ich9-ehci1&#039;&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x07&#039; function=&#039;0x7&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;usb&#039; index=&#039;0&#039; model=&#039;ich9-uhci1&#039;&gt;
+      &lt;master startport=&#039;0&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x07&#039; function=&#039;0x0&#039; multifunction=&#039;on&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;usb&#039; index=&#039;0&#039; model=&#039;ich9-uhci2&#039;&gt;
+      &lt;master startport=&#039;2&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x07&#039; function=&#039;0x1&#039; multifunction=&#039;on&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;usb&#039; index=&#039;0&#039; model=&#039;ich9-uhci3&#039;&gt;
+      &lt;master startport=&#039;4&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x07&#039; function=&#039;0x2&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;pci&#039; index=&#039;0&#039; model=&#039;pcie-root&#039;/&gt;
+    &lt;controller type=&#039;pci&#039; index=&#039;1&#039; model=&#039;pcie-root-port&#039;&gt;
+      &lt;model name=&#039;pcie-root-port&#039;/&gt;
+      &lt;target chassis=&#039;1&#039; port=&#039;0x10&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x02&#039; function=&#039;0x0&#039; multifunction=&#039;on&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;pci&#039; index=&#039;2&#039; model=&#039;pcie-root-port&#039;&gt;
+      &lt;model name=&#039;pcie-root-port&#039;/&gt;
+      &lt;target chassis=&#039;2&#039; port=&#039;0x11&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x02&#039; function=&#039;0x1&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;pci&#039; index=&#039;3&#039; model=&#039;pcie-root-port&#039;&gt;
+      &lt;model name=&#039;pcie-root-port&#039;/&gt;
+      &lt;target chassis=&#039;3&#039; port=&#039;0x12&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x02&#039; function=&#039;0x2&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;pci&#039; index=&#039;4&#039; model=&#039;pcie-root-port&#039;&gt;
+      &lt;model name=&#039;pcie-root-port&#039;/&gt;
+      &lt;target chassis=&#039;4&#039; port=&#039;0x13&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x02&#039; function=&#039;0x3&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;pci&#039; index=&#039;5&#039; model=&#039;pcie-root-port&#039;&gt;
+      &lt;model name=&#039;pcie-root-port&#039;/&gt;
+      &lt;target chassis=&#039;5&#039; port=&#039;0x14&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x02&#039; function=&#039;0x4&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;virtio-serial&#039; index=&#039;0&#039;&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x02&#039; slot=&#039;0x00&#039; function=&#039;0x0&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;controller type=&#039;sata&#039; index=&#039;0&#039;&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x1f&#039; function=&#039;0x2&#039;/&gt;
+    &lt;/controller&gt;
+    &lt;interface type=&#039;bridge&#039;&gt;
+      &lt;mac address=&#039;52:54:00:a5:55:9f&#039;/&gt;
+      &lt;source bridge=&#039;br0&#039;/&gt;
+      &lt;model type=&#039;virtio-net&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x01&#039; slot=&#039;0x00&#039; function=&#039;0x0&#039;/&gt;
+    &lt;/interface&gt;
+    &lt;serial type=&#039;pty&#039;&gt;
+      &lt;target type=&#039;isa-serial&#039; port=&#039;0&#039;&gt;
+        &lt;model name=&#039;isa-serial&#039;/&gt;
+      &lt;/target&gt;
+    &lt;/serial&gt;
+    &lt;console type=&#039;pty&#039;&gt;
+      &lt;target type=&#039;serial&#039; port=&#039;0&#039;/&gt;
+    &lt;/console&gt;
+    &lt;channel type=&#039;unix&#039;&gt;
+      &lt;target type=&#039;virtio&#039; name=&#039;org.qemu.guest_agent.0&#039;/&gt;
+      &lt;address type=&#039;virtio-serial&#039; controller=&#039;0&#039; bus=&#039;0&#039; port=&#039;1&#039;/&gt;
+    &lt;/channel&gt;
+    &lt;input type=&#039;tablet&#039; bus=&#039;usb&#039;&gt;
+      &lt;address type=&#039;usb&#039; bus=&#039;0&#039; port=&#039;1&#039;/&gt;
+    &lt;/input&gt;
+    &lt;input type=&#039;mouse&#039; bus=&#039;ps2&#039;/&gt;
+    &lt;input type=&#039;keyboard&#039; bus=&#039;ps2&#039;/&gt;
+    &lt;graphics type=&#039;vnc&#039; port=&#039;-1&#039; autoport=&#039;yes&#039; websocket=&#039;-1&#039; listen=&#039;0.0.0.0&#039; keymap=&#039;en-us&#039;&gt;
+      &lt;listen type=&#039;address&#039; address=&#039;0.0.0.0&#039;/&gt;
+    &lt;/graphics&gt;
+    &lt;audio id=&#039;1&#039; type=&#039;none&#039;/&gt;
+    &lt;video&gt;
+      &lt;model type=&#039;qxl&#039; ram=&#039;65536&#039; vram=&#039;65536&#039; vgamem=&#039;16384&#039; heads=&#039;1&#039; primary=&#039;yes&#039;/&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x00&#039; slot=&#039;0x01&#039; function=&#039;0x0&#039;/&gt;
+    &lt;/video&gt;
+    &lt;memballoon model=&#039;virtio&#039;&gt;
+      &lt;address type=&#039;pci&#039; domain=&#039;0x0000&#039; bus=&#039;0x04&#039; slot=&#039;0x00&#039; function=&#039;0x0&#039;/&gt;
+    &lt;/memballoon&gt;
+  &lt;/devices&gt;
+&lt;/domain&gt;
+</textarea>
+
+	<table>
+		<tr>
+			<td></td>
+			<td>
+												<input type="hidden" name="updatevm" value="1" />
+					<input type="button" value="Update" busyvalue="Updating..." readyvalue="Update" id="btnSubmit" />
+								<input type="button" value="Cancel" id="btnCancel" />
+						</td>
+		</tr>
+	</table>
+</div>
+
+<script src="/plugins/dynamix.vm.manager/scripts/codemirror/lib/codemirror.js?v=1700086926"></script>
+<script src="/plugins/dynamix.vm.manager/scripts/codemirror/addon/display/placeholder.js?v=1700086926"></script>
+<script src="/plugins/dynamix.vm.manager/scripts/codemirror/addon/fold/foldcode.js?v=1700086926"></script>
+<script src="/plugins/dynamix.vm.manager/scripts/codemirror/addon/hint/show-hint.js?v=1700086926"></script>
+<script src="/plugins/dynamix.vm.manager/scripts/codemirror/addon/hint/xml-hint.js?v=1700086926"></script>
+<script src="/plugins/dynamix.vm.manager/scripts/codemirror/addon/hint/libvirt-schema.js?v=1700086926"></script>
+<script src="/plugins/dynamix.vm.manager/scripts/codemirror/mode/xml/xml.js?v=1700086926"></script>
+<script type="text/javascript">
+
+function ShareChange(share) {
+		var value = share.value;
+		var text = share.options[share.selectedIndex].text;
+		var strArray = text.split(":");
+		var index = share.name.indexOf("]") + 1;
+		var name = share.name.substr(0,index) ;
+		if (strArray[0] === "User") {
+			var path = "/mnt/user/" + strArray[1] ;
+		} else {
+			var path = "/mnt/" + strArray[1] ;
+		}
+		if (strArray[0] != "Manual") {
+		document.getElementById(name+"[target]").value = strArray[1] ;	
+		document.getElementById(name+"[source]").value = path ;	
+		document.getElementById(name+"[target]").setAttribute("disabled","disabled");
+		document.getElementById(name+"[source]").setAttribute("disabled","disabled");
+		} else {
+			document.getElementById(name+"[target]").removeAttribute("disabled");
+			document.getElementById(name+"[source]").removeAttribute("disabled");
+		}
+}
+
+function BIOSChange(bios) {
+		var value = bios.value;
+		if (value == "0") {
+			document.getElementById("USBBoottext").style.visibility="hidden";
+			document.getElementById("domain_usbboot").style.visibility="hidden";
+		} else {
+			document.getElementById("USBBoottext").style.display="inline";
+			document.getElementById("USBBoottext").style.visibility="visible";
+			document.getElementById("domain_usbboot").style.display="inline";
+			document.getElementById("domain_usbboot").style.visibility="visible";
+		}
+}
+
+function SetBootorderfields(usbbootvalue) {
+	var bootelements = document.getElementsByClassName("bootorder");
+	for(var i = 0; i < bootelements.length; i++) {
+		if (usbbootvalue == "Yes") {
+		bootelements[i].value = "";
+		bootelements[i].setAttribute("disabled","disabled");
+		} else bootelements[i].removeAttribute("disabled");
+	}
+	var bootelements = document.getElementsByClassName("pcibootorder");
+	const bootpcidevs = []  
+
+	for(var i = 0; i < bootelements.length; i++) {
+		let bootpciid = bootelements[i].name.split('[') ;
+		bootpciid= bootpciid[1].replace(']', '') ;
+		
+		if (usbbootvalue == "Yes") {
+		bootelements[i].value = "";
+		bootelements[i].setAttribute("disabled","disabled");
+		} else {
+			// Put check for PCI Type 0108 & 02xx and only remove disable if 0108 or 02xx.
+			if (bootpcidevs[bootpciid] === "Y") 	bootelements[i].removeAttribute("disabled");
+		}
+	}
+}
+
+function USBBootChange(usbboot) {
+	// Remove all boot orders if changed to Yes
+	var value = usbboot.value ;
+	SetBootorderfields(value) ;
+}
+
+function AutoportChange(autoport) {
+		if (autoport.value == "yes") {
+			document.getElementById("port").style.visibility="hidden";
+			document.getElementById("Porttext").style.visibility="hidden";
+			document.getElementById("wsport").style.visibility="hidden";
+			document.getElementById("WSPorttext").style.visibility="hidden";
+		} else {
+			var protocol = document.getElementById("protocol").value ;
+			document.getElementById("port").style.display="inline";
+			document.getElementById("port").style.visibility="visible";
+			document.getElementById("Porttext").style.display="inline";
+			document.getElementById("Porttext").style.visibility="visible";
+			if (protocol == "vnc") {
+				document.getElementById("wsport").style.display="inline";
+				document.getElementById("wsport").style.visibility="visible";
+				document.getElementById("WSPorttext").style.display="inline";
+				document.getElementById("WSPorttext").style.visibility="visible";
+			} else {
+				document.getElementById("wsport").style.visibility="hidden";
+				document.getElementById("WSPorttext").style.visibility="hidden";
+			}
+		}	
+	}
+
+function ProtocolChange(protocol) {
+		var autoport = document.getElementById("autoport").value ;
+		if (autoport == "yes") {
+			document.getElementById("port").style.visibility="hidden";
+			document.getElementById("Porttext").style.visibility="hidden";
+			document.getElementById("wsport").style.visibility="hidden";
+			document.getElementById("WSPorttext").style.visibility="hidden";
+		} else {
+			document.getElementById("port").style.display="inline";
+			document.getElementById("port").style.visibility="visible";
+			document.getElementById("Porttext").style.display="inline";
+			document.getElementById("Porttext").style.visibility="visible";
+			if (protocol.value == "vnc") {
+				document.getElementById("wsport").style.display="inline";
+				document.getElementById("wsport").style.visibility="visible";
+				document.getElementById("WSPorttext").style.display="inline";
+				document.getElementById("WSPorttext").style.visibility="visible";
+			} else {
+				document.getElementById("wsport").style.visibility="hidden";
+				document.getElementById("WSPorttext").style.visibility="hidden";
+			}
+		}	
+	}
+		
+	
+
+
+
+$(function() {
+	function completeAfter(cm, pred) {
+		var cur = cm.getCursor();
+		if (!pred || pred()) setTimeout(function() {
+			if (!cm.state.completionActive)
+				cm.showHint({completeSingle: false});
+		}, 100);
+		return CodeMirror.Pass;
+	}
+
+	function completeIfAfterLt(cm) {
+		return completeAfter(cm, function() {
+			var cur = cm.getCursor();
+			return cm.getRange(CodeMirror.Pos(cur.line, cur.ch - 1), cur) == "<";
+		});
+	}
+
+	function completeIfInTag(cm) {
+		return completeAfter(cm, function() {
+			var tok = cm.getTokenAt(cm.getCursor());
+			if (tok.type == "string" && (!/['"]/.test(tok.string.charAt(tok.string.length - 1)) || tok.string.length == 1)) return false;
+			var inner = CodeMirror.innerMode(cm.getMode(), tok.state).state;
+			return inner.tagName;
+		});
+	}
+
+
+	var editor = CodeMirror.fromTextArea(document.getElementById("addcode"), {
+		mode: "xml",
+		lineNumbers: true,
+		foldGutter: true,
+		gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+		extraKeys: {
+			"'<'": completeAfter,
+			"'/'": completeIfAfterLt,
+			"' '": completeIfInTag,
+			"'='": completeIfInTag,
+			"Ctrl-Space": "autocomplete"
+		},
+		hintOptions: {schemaInfo: getLibvirtSchema()}
+	});
+
+	SetBootorderfields("No") ;
+
+	function resetForm() {
+		$("#vmform .domain_vcpu").change(); // restore the cpu checkbox disabled states
+				$('#vmform #domain_ovmf option[value=0]').prop('disabled',true);
+					}
+
+	$('.advancedview').change(function () {
+		if ($(this).is(':checked')) {
+			setTimeout(function() {
+				editor.refresh();
+			}, 100);
+		}
+	});
+
+
+	var regenerateDiskPreview = function (disk_index) {
+		var domaindir = '/mnt/user/domains/' + $('#domain_oldname').val();
+		var tl_args = arguments.length;
+
+		$("#vmform .disk").closest('table').each(function (index) {
+			var $table = $(this);
+
+			if (tl_args && disk_index != $table.data('index')) {
+				return;
+			}
+
+			var disk_select = $table.find(".disk_select option:selected").val();
+			var $disk_file_sections = $table.find('.disk_file_options');
+			var $disk_bus_sections = $table.find('.disk_bus_options');
+			var $disk_input = $table.find('.disk');
+			var $disk_preview = $table.find('.disk_preview');
+			var $disk_serial = $table.find('.disk_serial');
+
+			if (disk_select == 'manual') {
+
+				// Manual disk
+				$disk_preview.fadeOut('fast', function() {
+					$disk_input.fadeIn('fast');
+				});
+
+				$disk_bus_sections.filter('.wasadvanced').removeClass('wasadvanced').addClass('advanced');
+				slideDownRows($disk_bus_sections.not(isVMAdvancedMode() ? '.basic' : '.advanced'));
+
+				$.getJSON("/plugins/dynamix.vm.manager/include/VMajax.php?action=file-info&file=" + encodeURIComponent($disk_input.val()), function( info ) {
+					if (info.isfile || info.isblock) {
+						slideUpRows($disk_file_sections);
+						$disk_file_sections.filter('.advanced').removeClass('advanced').addClass('wasadvanced');
+
+						$disk_input.attr('name', $disk_input.attr('name').replace('new', 'image'));
+					} else {
+						$disk_file_sections.filter('.wasadvanced').removeClass('wasadvanced').addClass('advanced');
+						slideDownRows($disk_file_sections.not(isVMAdvancedMode() ? '.basic' : '.advanced'));
+
+						$disk_input.attr('name', $disk_input.attr('name').replace('image', 'new'));
+					}
+				});
+
+			} else if (disk_select !== '') {
+
+				// Auto disk
+				var auto_disk_path = domaindir + '/vdisk' + (index+1) + '.img';
+				$disk_preview.html(auto_disk_path);
+				$disk_input.fadeOut('fast', function() {
+					$disk_preview.fadeIn('fast');
+				});
+
+				$disk_bus_sections.filter('.wasadvanced').removeClass('wasadvanced').addClass('advanced');
+				slideDownRows($disk_bus_sections.not(isVMAdvancedMode() ? '.basic' : '.advanced'));
+
+				$.getJSON("/plugins/dynamix.vm.manager/include/VMajax.php?action=file-info&file=" + encodeURIComponent(auto_disk_path), function( info ) {
+					if (info.isfile || info.isblock) {
+						slideUpRows($disk_file_sections);
+						$disk_file_sections.filter('.advanced').removeClass('advanced').addClass('wasadvanced');
+
+						$disk_input.attr('name', $disk_input.attr('name').replace('new', 'image'));
+					} else {
+						$disk_file_sections.filter('.wasadvanced').removeClass('wasadvanced').addClass('advanced');
+						slideDownRows($disk_file_sections.not(isVMAdvancedMode() ? '.basic' : '.advanced'));
+
+						$disk_input.attr('name', $disk_input.attr('name').replace('image', 'new'));
+					}
+				});
+
+			} else {
+
+				// No disk
+				var $hide_el = $table.find('.disk_bus_options,.disk_file_options,.disk_preview,.disk');
+				$disk_preview.html('');
+				slideUpRows($hide_el);
+				$hide_el.filter('.advanced').removeClass('advanced').addClass('wasadvanced');
+
+			}
+		});
+	};
+
+	var setDiskserial = function (disk_index) {
+		var domaindir = '/mnt/user/domains/' + $('#domain_oldname').val();
+		var tl_args = arguments.length;
+
+		$("#vmform .disk").closest('table').each(function (index) {
+			var $table = $(this);
+
+			if (tl_args && disk_index != $table.data('index')) {
+				return;
+			}
+
+			var disk_select = $table.find(".disk_select option:selected").val();
+			var $disk_serial = $table.find('.disk_serial');
+
+			 if (disk_select !== '') {
+
+				// Auto disk serial
+				var auto_serial = 'vdisk' + (index+1) ;
+				$disk_serial.val(auto_serial);
+
+			} 
+
+		});
+	};
+
+	
+	$("#vmform .domain_vcpu").change(function changeVCPUEvent() {
+		var $cores = $("#vmform .domain_vcpu:checked");
+
+		if ($cores.length == 1) {
+			$cores.prop("disabled", true);
+		} else {
+			$("#vmform .domain_vcpu").prop("disabled", false);
+		}
+	});
+
+	$("#vmform #domain_mem").change(function changeMemEvent() {
+		$("#vmform #domain_maxmem").val($(this).val());
+	});
+
+	$("#vmform #domain_maxmem").change(function changeMaxMemEvent() {
+		if (parseFloat($(this).val()) < parseFloat($("#vmform #domain_mem").val())) {
+			$("#vmform #domain_mem").val($(this).val());
+		}
+	});
+
+	$("#vmform #domain_machine").change(function changeMachineEvent() {
+		// Cdrom Bus: select IDE for i440 and SATA for q35
+		if ($(this).val().indexOf('i440fx') != -1) {
+			$('#vmform .cdrom_bus').val('ide');
+		} else {
+			$('#vmform .cdrom_bus').val('sata');
+		}
+	});
+
+	$("#vmform #domain_ovmf").change(function changeBIOSEvent() {
+		// using OVMF - disable vmvga vnc option
+		if ($(this).val() != '0' && $("#vmform #vncmodel").val() == 'vmvga') {
+			$("#vmform #vncmodel").val('qxl');
+		}
+		$("#vmform #vncmodel option[value='vmvga']").prop('disabled', ($(this).val() != '0'));
+	}).change(); // fire event now
+
+	$("#vmform").on("spawn_section", function spawnSectionEvent(evt, section, sectiondata) {
+		if (sectiondata.category == 'vDisk') {
+			regenerateDiskPreview(sectiondata.index);
+			setDiskserial(sectiondata.index) ;
+		}
+		if (sectiondata.category == 'Graphics_Card') {
+			$(section).find(".gpu").change();
+		}
+	});
+
+	$("#vmform").on("destroy_section", function destroySectionEvent(evt, section, sectiondata) {
+		if (sectiondata.category == 'vDisk') {
+			regenerateDiskPreview();
+		}
+	});
+
+	$("#vmform").on("input change", ".cdrom", function changeCdromEvent() {
+		if ($(this).val() == '') {
+			slideUpRows($(this).closest('table').find('.cdrom_bus').closest('tr'));
+		} else {
+			slideDownRows($(this).closest('table').find('.cdrom_bus').closest('tr'));
+		}
+	});
+
+	$("#vmform").on("change", ".disk_select", function changeDiskSelectEvent() {
+		regenerateDiskPreview($(this).closest('table').data('index'));
+	});
+
+	$("#vmform").on("input change", ".disk", function changeDiskEvent() {
+		var $input = $(this);
+		var config = $input.data();
+
+		if (config.hasOwnProperty('pickfilter')) {
+			regenerateDiskPreview($input.closest('table').data('index'));
+		}
+	});
+
+	$("#vmform").on("change", ".gpu", function changeGPUEvent() {
+		var myvalue = $(this).val();
+		var mylabel = $(this).children('option:selected').text();
+		var myindex = $(this).closest('table').data('index');
+
+		if (myindex == 0) {
+			$vnc_sections = $('.autoportline,.protocol,.vncmodel,.vncpassword,.vnckeymap');
+			if (myvalue == 'virtual') {
+				$vnc_sections.filter('.wasadvanced').removeClass('wasadvanced').addClass('advanced');
+				slideDownRows($vnc_sections.not(isVMAdvancedMode() ? '.basic' : '.advanced'));
+			} else {
+				slideUpRows($vnc_sections);
+				$vnc_sections.filter('.advanced').removeClass('advanced').addClass('wasadvanced');
+			}
+		}
+
+		$romfile = $(this).closest('table').find('.romfile');
+		if (myvalue == 'virtual' || myvalue == '') {
+			slideUpRows($romfile.not(isVMAdvancedMode() ? '.basic' : '.advanced'));
+			$romfile.filter('.advanced').removeClass('advanced').addClass('wasadvanced');
+		} else {
+			$romfile.filter('.wasadvanced').removeClass('wasadvanced').addClass('advanced');
+			slideDownRows($romfile.not(isVMAdvancedMode() ? '.basic' : '.advanced'));
+
+			$("#vmform .gpu").not(this).each(function () {
+				if (myvalue == $(this).val()) {
+					$(this).prop("selectedIndex", 0).change();
+				}
+			});
+		}
+	});
+
+	$("#vmform").on("click", ".mac_generate", function generateMac() {
+		var $input = $(this).prev('input');
+
+		$.getJSON("/plugins/dynamix.vm.manager/include/VMajax.php?action=generate-mac", function( data ) {
+			if (data.mac) {
+				$input.val(data.mac);
+			}
+		});
+	});
+
+	$("#vmform .formview #btnSubmit").click(function frmSubmit() {
+		var $button = $(this);
+		var $panel = $('.formview');
+		var form = $button.closest('form');
+
+		$("#vmform .disk_select option:selected").not("[value='manual']").closest('table').each(function () {
+			var v = $(this).find('.disk_preview').html();
+			$(this).find('.disk').val(v);
+		});
+
+		$panel.find('input').prop('disabled', false); // enable all inputs otherwise they wont post
+
+				// signal devices to be added or removed
+		form.find('input[name="usb[]"],input[name="pci[]"],input[name="usbopt[]"]').each(function(){
+			if (!$(this).prop('checked')) $(this).prop('checked',true).val($(this).val()+'#remove');
+		});
+		// remove unused graphic cards
+		var gpus = [], i = 0;
+		do {
+			var gpu = form.find('select[name="gpu['+(i++)+'][id]"] option:selected').val();
+			if (gpu) gpus.push(gpu);
+		} while (gpu);
+		form.find('select[name="gpu[0][id]"] option').each(function(){
+			var gpu = $(this).val();
+			if (gpu != 'virtual' && !gpus.includes(gpu)) form.append('<input type="hidden" name="pci[]" value="'+gpu+'#remove">');
+		});
+		// remove unused sound cards
+		var sound = [], i = 0;
+		do {
+			var audio = form.find('select[name="audio['+(i++)+'][id]"] option:selected').val();
+			if (audio) sound.push(audio);
+		} while (audio);
+		form.find('select[name="audio[0][id]"] option').each(function(){
+			var audio = $(this).val();
+			if (audio && !sound.includes(audio)) form.append('<input type="hidden" name="pci[]" value="'+audio+'#remove">');
+		});
+				var postdata = form.find('input,select').serialize().replace(/'/g,"%27");
+				// keep checkbox visually unchecked
+		form.find('input[name="usb[]"],input[name="usbopt[]"],input[name="pci[]"]').each(function(){
+			if ($(this).val().indexOf('#remove')>0) $(this).prop('checked',false);
+		});
+		
+		$panel.find('input').prop('disabled', true);
+		$button.val($button.attr('busyvalue'));
+
+		$.post("/plugins/dynamix.vm.manager/templates/Custom.form.php", postdata, function( data ) {
+			if (data.success) {
+				if (data.vmrcurl) {
+					var vmrc_window=window.open(data.vmrcurl, '_blank', 'scrollbars=yes,resizable=yes');
+					try {
+						vmrc_window.focus();
+					} catch (e) {
+						swal({title:"Browser error",text:"Pop-up Blocker is enabled! Please add this site to your exception list",type:"warning",confirmButtonText:"Ok"},function(){ done() });
+						return;
+					}
+				}
+				done();
+			}
+			if (data.error) {
+				swal({title:"VM creation error",text:data.error,type:"error",confirmButtonText:"Ok"});
+				$panel.find('input').prop('disabled', false);
+				$button.val($button.attr('readyvalue'));
+				resetForm();
+			}
+		}, "json");
+	});
+
+	$("#vmform .xmlview #btnSubmit").click(function frmSubmit() {
+		var $button = $(this);
+		var $panel = $('.xmlview');
+
+		editor.save();
+
+		$panel.find('input').prop('disabled', false); // enable all inputs otherwise they wont post
+
+		var postdata = $panel.closest('form').serialize().replace(/'/g,"%27");
+
+		$panel.find('input').prop('disabled', true);
+		$button.val($button.attr('busyvalue'));
+
+		$.post("/plugins/dynamix.vm.manager/templates/Custom.form.php", postdata, function( data ) {
+			if (data.success) {
+				done();
+			}
+			if (data.error) {
+				swal({title:"VM creation error",text:data.error,type:"error",confirmButtonText:"Ok"});
+				$panel.find('input').prop('disabled', false);
+				$button.val($button.attr('readyvalue'));
+				resetForm();
+			}
+		}, "json");
+	});
+
+	// Fire events below once upon showing page
+	var os = $("#vmform #template_os").val() || 'linux';
+	var os_casted = (os.indexOf('windows') == -1 ? 'other' : 'windows');
+
+	$('#vmform .domain_os').not($('.' + os_casted)).hide();
+	$('#vmform .domain_os.' + os_casted).not(isVMAdvancedMode() ? '.basic' : '.advanced').show();
+
+	
+	// disable usb3 option for windows7 / xp / server 2003 / server 2008
+	var noUSB3 = (os == 'windows7' || os == 'windows2008' || os == 'windowsxp' || os == 'windows2003');
+	if (noUSB3 && ($("#vmform #usbmode").val().indexOf('usb3')===0)) {
+		$("#vmform #usbmode").val('usb2');
+	}
+	$("#vmform #usbmode option[value^='usb3']").prop('disabled', noUSB3);
+
+	$("#vmform .gpu").change();
+
+	$('#vmform .cdrom').change();
+
+	regenerateDiskPreview();
+
+	resetForm();
+});
+</script>
+</div>
+
+	</form>
+</div>
+
+<script src="/webGui/javascript/jquery.filedrop.js?v=1700086926"></script>
+<script src="/webGui/javascript/jquery.filetree.js?v=1700086926" charset="utf-8"></script>
+<script src="/webGui/javascript/jquery.switchbutton.js?v=1700086926"></script>
+<script src="/plugins/dynamix.vm.manager/javascript/dynamix.vm.manager.js?v=1700086926"></script>
+<script>
+function isVMAdvancedMode() {
+	return true;
+}
+
+function isVMXMLMode() {
+	return ($.cookie('vmmanager_listview_mode') == 'xml');
+}
+
+$(function() {
+	$('.autostart').switchButton({
+		on_label: "Yes",
+		off_label: "No",
+		labels_placement: "right"
+	});
+	$('.autostart').change(function () {
+		$('#domain_autostart').prop('checked', $(this).is(':checked'));
+	});
+
+	$('.advancedview').switchButton({
+		labels_placement: "left",
+		on_label: "XML View",
+		off_label: "Form View",
+		checked: isVMXMLMode()
+	});
+	$('.advancedview').change(function () {
+		toggleRows('xmlview', $(this).is(':checked'), 'formview');
+		$.cookie('vmmanager_listview_mode', $(this).is(':checked') ? 'xml' : 'form', { expires: 3650 });
+	});
+
+	$('#template_img').click(function (){
+		var p = $(this).position();
+		p.left -= 4;
+		p.top -= 4;
+		$('#template_img_chooser_outer').css(p);
+		$('#template_img_chooser_outer').slideDown();
+	});
+	$('#template_img_chooser').on('click', 'div', function (){
+		$('#template_img').attr('src', $(this).find('img').attr('src'));
+		$('#template_icon').val($(this).find('img').attr('basename'));
+		$('#template_img_chooser_outer').slideUp();
+	});
+	$(document).keyup(function(e) {
+		if (e.which == 27) $('#template_img_chooser_outer').slideUp();
+	});
+
+	$("#vmform table[data-category]").each(function () {
+		var category = $(this).data('category');
+
+		updatePrefixLabels(category);
+		 bindSectionEvents(category); 	});
+
+	$("#vmform input[data-pickroot]").fileTreeAttach();
+
+	var $el = $('#form_content');
+	var $xmlview = $el.find('.xmlview');
+	var $formview = $el.find('.formview');
+
+	if ($xmlview.length || $formview.length) {
+		$('.advancedview_panel').fadeIn('fast');
+		if (isVMXMLMode()) {
+			$('.formview').hide();
+			$('.xmlview').filter(function() {
+				return (($(this).prop('style').display + '') === '');
+			}).show();
+		} else {
+			$('.xmlview').hide();
+			$('.formview').filter(function() {
+				return (($(this).prop('style').display + '') === '');
+			}).show();
+		}
+	} else {
+		$('.advancedview_panel').fadeOut('fast');
+	}
+
+	$("#vmform #btnCancel").click(function (){
+		done();
+	});
+
+	$('#form_content').fadeIn('fast');
+});
+</script>
+</div></div>
+<div class="spinner fixed"></div>
+<form name="rebootNow" method="POST" action="/webGui/include/Boot.php"><input type="hidden" name="cmd" value="reboot"></form>
+<iframe id="progressFrame" name="progressFrame" frameborder="0"></iframe>
+
+<!--
+######
+Footer
+######
+-->
+<div id="footer"><span id="statusraid"><span id="statusbar"><span class='green strong'><i class='fa fa-play-circle'></i> Array Started</span></span></span><span id='countdown'></span><span id='user-notice' class='red-text'></span><span id='copyright'>Unraid&reg; webGui &copy;2024, Lime Technology, Inc. <a href='https://docs.unraid.net/category/manual' target='_blank' title="Online manual"><i class='fa fa-book'></i> manual</a></span></div><script>
+// Firefox specific workaround, not needed anymore in firefox version 100 and higher
+//if (typeof InstallTrigger!=='undefined') $('#nav-block').addClass('mozilla');
+
+function parseINI(data){
+  var regex = {
+    section: /^\s*\[\s*\"*([^\]]*)\s*\"*\]\s*$/,
+    param: /^\s*([^=]+?)\s*=\s*\"*(.*?)\s*\"*$/,
+    comment: /^\s*;.*$/
+  };
+  var value = {};
+  var lines = data.split(/[\r\n]+/);
+  var section = null;
+  lines.forEach(function(line) {
+    if (regex.comment.test(line)) {
+      return;
+    } else if (regex.param.test(line)) {
+      var match = line.match(regex.param);
+      if (section) {
+        value[section][match[1]] = match[2];
+      } else {
+        value[match[1]] = match[2];
+      }
+    } else if (regex.section.test(line)) {
+      var match = line.match(regex.section);
+      value[match[1]] = {};
+      section = match[1];
+    } else if (line.length==0 && section) {
+      section = null;
+    };
+  });
+  return value;
+}
+// unraid animated logo
+var unraid_logo = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 133.52 76.97" class="unraid_mark"><defs><linearGradient id="unraid_logo" x1="23.76" y1="81.49" x2="109.76" y2="-4.51" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e32929"/><stop offset="1" stop-color="#ff8d30"/></linearGradient></defs><path d="m70,19.24zm57,0l6.54,0l0,38.49l-6.54,0l0,-38.49z" fill="url(#unraid_logo)" class="unraid_mark_9"/><path d="m70,19.24zm47.65,11.9l-6.55,0l0,-23.79l6.55,0l0,23.79z" fill="url(#unraid_logo)" class="unraid_mark_8"/><path d="m70,19.24zm31.77,-4.54l-6.54,0l0,-14.7l6.54,0l0,14.7z" fill="url(#unraid_logo)" class="unraid_mark_7"/><path d="m70,19.24zm15.9,11.9l-6.54,0l0,-23.79l6.54,0l0,23.79z" fill="url(#unraid_logo)" class="unraid_mark_6"/><path d="m63.49,19.24l6.51,0l0,38.49l-6.51,0l0,-38.49z" fill="url(#unraid_logo)" class="unraid_mark_5"/><path d="m70,19.24zm-22.38,26.6l6.54,0l0,23.78l-6.54,0l0,-23.78z" fill="url(#unraid_logo)" class="unraid_mark_4"/><path d="m70,19.24zm-38.26,43.03l6.55,0l0,14.73l-6.55,0l0,-14.73z" fill="url(#unraid_logo)" class="unraid_mark_3"/><path d="m70,19.24zm-54.13,26.6l6.54,0l0,23.78l-6.54,0l0,-23.78z" fill="url(#unraid_logo)" class="unraid_mark_2"/><path d="m70,19.24zm-63.46,38.49l-6.54,0l0,-38.49l6.54,0l0,38.49z" fill="url(#unraid_logo)" class="unraid_mark_1"/></svg>';
+
+var defaultPage = new NchanSubscriber('/sub/session,var,notify',{subscriber:'websocket'});
+defaultPage.on('message', function(msg,meta) {
+  switch (meta.id.channel()) {
+  case 0:
+    // stale session, force login
+    if (csrf_token != msg) location.replace('/');
+    break;
+  case 1:
+    // message field in footer
+    var ini = parseINI(msg);
+    switch (ini['fsState']) {
+      case 'Stopped'   : var status = "<span class='red strong'><i class='fa fa-stop-circle'></i> Array Stopped</span>"; break;
+      case 'Started'   : var status = "<span class='green strong'><i class='fa fa-play-circle'></i> Array Started</span>"; break;
+      case 'Formatting': var status = "<span class='green strong'><i class='fa fa-play-circle'></i> Array Started</span>&bullet;<span class='orange strong'>Formatting device(s)</span>"; break;
+      default          : var status = "<span class='orange strong'><i class='fa fa-pause-circle'></i> "+_('Array '+ini['fsState'])+"</span>";
+    }
+    if (ini['mdResyncPos'] > 0) {
+      var resync = ini['mdResyncAction'].split(/\s+/);
+      switch (resync[0]) {
+        case 'recon': var action = resync[1]=='P' ? "Parity-Sync" : "Data-Rebuild"; break;
+        case 'check': var action = resync.length>1 ? "Parity-Check" : "Read-Check"; break;
+        case 'clear': var action = "Disk-Clear"; break;
+        default     : var action = '';
+      }
+      action += " "+(ini['mdResyncPos']/(ini['mdResyncSize']/100+1)).toFixed(1)+" %";
+      status += "&bullet;<span class='orange strong'>"+action.replace('.','.');
+      if (ini['mdResyncDt']==0) status += " &bullet; Paused";
+      status += "</span>";
+    }
+    if (ini['fsProgress']) status += "&bullet;<span class='blue strong'>"+_(ini['fsProgress'])+"</span>";
+    $('#statusbar').html(status);
+    break;
+  case 2:
+    // notifications
+    var bell1 = 0, bell2 = 0, bell3 = 0;
+    $.each($.parseJSON(msg), function(i, notify) {
+      switch (notify.importance) {
+        case 'alert'  : bell1++; break;
+        case 'warning': bell2++; break;
+        case 'normal' : bell3++; break;
+      }
+      if (notify.show) {
+        $.jGrowl(notify.subject+'<br>'+notify.description, {
+          group: notify.importance,
+          header: notify.event+': '+notify.timestamp,
+          theme: notify.file,
+          beforeOpen: function(e,m,o){if ($('div.jGrowl-notification').hasClass(notify.file)) return(false);},
+          afterOpen: function(e,m,o){if (notify.link) $(e).css('cursor','pointer');},
+          click: function(e,m,o){if (notify.link) location.replace(notify.link);},
+          close: function(e,m,o){$.post('/webGui/include/Notify.php',{cmd:'hide',file:"/tmp/notifications/unread/"+notify.file,csrf_token:csrf_token});}
+        });
+      }
+    });
+    $('#bell').removeClass('red-orb yellow-orb green-orb').prop('title',"Alerts ["+bell1+']\n'+"Warnings ["+bell2+']\n'+"Notices ["+bell3+']');;
+    if (bell1) $('#bell').addClass('red-orb'); else
+    if (bell2) $('#bell').addClass('yellow-orb'); else
+    if (bell3) $('#bell').addClass('green-orb');
+
+    if (bell1) $('#dropdown-board li.dropdown-submenu:eq(0)').removeClass('disabled'); else $('#dropdown-board li.dropdown-submenu:eq(0)').addClass('disabled').find('.dropdown-menu').hide();
+    if (bell2) $('#dropdown-board li.dropdown-submenu:eq(1)').removeClass('disabled'); else $('#dropdown-board li.dropdown-submenu:eq(1)').addClass('disabled').find('.dropdown-menu').hide();
+    if (bell3) $('#dropdown-board li.dropdown-submenu:eq(2)').removeClass('disabled'); else $('#dropdown-board li.dropdown-submenu:eq(2)').addClass('disabled').find('.dropdown-menu').hide();
+    break;
+  }
+});
+
+var nchan_plugins = new NchanSubscriber('/sub/plugins',{subscriber:'websocket'});
+nchan_plugins.on('message', function(data) {
+  if (!data || openDone(data)) return;
+  var box = $('pre#swaltext');
+  const text = box.html().split('<br>');
+  if (data.slice(-1) == '\r') {
+    text[text.length-1] = data.slice(0,-1);
+  } else {
+    text.push(data.slice(0,-1));
+  }
+  box.html(text.join('<br>')).scrollTop(box[0].scrollHeight);
+});
+
+var nchan_docker = new NchanSubscriber('/sub/docker',{subscriber:'websocket'});
+nchan_docker.on('message', function(data) {
+  if (!data || openDone(data)) return;
+  var box = $('pre#swaltext');
+  data = data.split('\0');
+  switch (data[0]) {
+  case 'addLog':
+    var rows = document.getElementsByClassName('logLine');
+    if (rows.length) {
+      var row = rows[rows.length-1];
+      row.innerHTML += data[1]+'<br>';
+    }
+    break;
+  case 'progress':
+    var rows = document.getElementsByClassName('progress-'+data[1]);
+    if (rows.length) {
+      rows[rows.length-1].textContent = data[2];
+    }
+    break;
+  case 'addToID':
+    var rows = document.getElementById(data[1]);
+    if (rows === null) {
+      rows = document.getElementsByClassName('logLine');
+      if (rows.length) {
+        var row = rows[rows.length-1];
+        row.innerHTML += '<span id="'+data[1]+'">IMAGE ID ['+data[1]+']: <span class="content">'+data[2]+'</span><span class="progress-'+data[1]+'"></span>.</span><br>';
+      }
+    } else {
+      var rows_content = rows.getElementsByClassName('content');
+      if (!rows_content.length || rows_content[rows_content.length-1].textContent != data[2]) {
+        rows.innerHTML += '<span class="content">'+data[2]+'</span><span class="progress-'+data[1]+'"></span>.';
+      }
+    }
+    break;
+  case 'show_Wait':
+    progress_span[data[1]] = document.getElementById('wait-'+data[1]);
+    progress_dots[data[1]] = setInterval(function(){if (((progress_span[data[1]].innerHTML += '.').match(/\./g)||[]).length > 9) progress_span[data[1]].innerHTML = progress_span[data[1]].innerHTML.replace(/\.+$/,'');},500);
+    break;
+  case 'stop_Wait':
+    clearInterval(progress_dots[data[1]]);
+    progress_span[data[1]].innerHTML = '';
+    break;
+  default:
+    box.html(box.html()+data[0]);
+    break;
+  }
+  box.scrollTop(box[0].scrollHeight);
+});
+
+var backtotopoffset = 250;
+var backtotopduration = 500;
+$(window).scroll(function() {
+  if ($(this).scrollTop() > backtotopoffset) {
+    $('.back_to_top').fadeIn(backtotopduration);
+  } else {
+    $('.back_to_top').fadeOut(backtotopduration);
+  }
+  var top = $('div#header').height()-1; // header height has 1 extra pixel to cover overlap
+  $('div#menu').css($(this).scrollTop() > top ? {position:'fixed',top:'0'} : {position:'absolute',top:top+'px'});
+  // banner
+  $('div.upgrade_notice').css($(this).scrollTop() > 24 ? {position:'fixed',top:'0'} : {position:'absolute',top:'24px'});
+});
+$('.back_to_top').click(function(event) {
+  event.preventDefault();
+  $('html,body').animate({scrollTop:0},backtotopduration);
+  return false;
+});
+
+$.post('/webGui/include/Notify.php',{cmd:'init',csrf_token:csrf_token});
+$(function() {
+  defaultPage.start();
+  $('div.spinner.fixed').html(unraid_logo);
+  setTimeout(function(){$('div.spinner').not('.fixed').each(function(){$(this).html(unraid_logo);});},500); // display animation if page loading takes longer than 0.5s
+  shortcut.add('F1',function(){HelpButton();});
+  $('input[value="Apply"],input[value="Apply"],input[name="cmdEditShare"],input[name="cmdUserEdit"]').prop('disabled',true);
+  $('form').find('select,input[type=text],input[type=number],input[type=password],input[type=checkbox],input[type=radio],input[type=file],textarea').not('.lock').each(function(){$(this).on('input change',function() {
+    var form = $(this).parentsUntil('form').parent();
+    form.find('input[value="Apply"],input[value="Apply"],input[name="cmdEditShare"],input[name="cmdUserEdit"]').not('input.lock').prop('disabled',false);
+    form.find('input[value="Done"],input[value="Done"]').not('input.lock').val("Reset").prop('onclick',null).off('click').click(function(){formHasUnsavedChanges=false;refresh(form.offset().top);});
+  });});
+  // add leave confirmation when form has changed without applying (opt-in function)
+  if ($('form.js-confirm-leave').length>0) {
+    $('form.js-confirm-leave').on('change',function(e){formHasUnsavedChanges=true;}).on('submit',function(e){formHasUnsavedChanges=false;});
+    $(window).on('beforeunload',function(e){if (formHasUnsavedChanges) return '';}); // note: the browser creates its own popup window and warning message
+  }
+  // form parser: add escapeQuotes protection
+  $('form').each(function(){
+    var action = $(this).prop('action').actionName();
+    if (action=='update.htm' || action=='update.php') {
+      var onsubmit = $(this).attr('onsubmit')||'';
+      $(this).attr('onsubmit','clearTimeout(timers.flashReport);escapeQuotes(this);'+onsubmit);
+    }
+  });
+  var top = ($.cookie('top')||0) - $('.tabs').offset().top - 75;
+  if (top>0) {$('html,body').scrollTop(top);}
+  $.removeCookie('top');
+  if ($.cookie('addAlert') != null) bannerAlert(addAlert.text,addAlert.cmd,addAlert.plg,addAlert.func);
+  var opts = [];
+  context.settings({above:false});
+  opts.push({header:"Notifications"});
+  opts.push({text:"Alerts",icon:'fa-bell-o',subMenu:[{text:"View",icon:'fa-folder-open-o',action:function(e){e.preventDefault();openNotifier('alert');}},{text:"History",icon:'fa-file-text-o',action:function(e){e.preventDefault();viewHistory('alert');}},{text:"Acknowledge",icon:'fa-check-square-o',action:function(e){e.preventDefault();closeNotifier('alert');}}]});
+  opts.push({text:"Warnings",icon:'fa-star-o',subMenu:[{text:"View",icon:'fa-folder-open-o',action:function(e){e.preventDefault();openNotifier('warning');}},{text:"History",icon:'fa-file-text-o',action:function(e){e.preventDefault();viewHistory('warning');}},{text:"Acknowledge",icon:'fa-check-square-o',action:function(e){e.preventDefault();closeNotifier('warning');}}]});
+  opts.push({text:"Notices",icon:'fa-sun-o',subMenu:[{text:"View",icon:'fa-folder-open-o',action:function(e){e.preventDefault();openNotifier('normal');}},{text:"History",icon:'fa-file-text-o',action:function(e){e.preventDefault();viewHistory('normal');}},{text:"Acknowledge",icon:'fa-check-square-o',action:function(e){e.preventDefault();closeNotifier('normal');}}]});
+  context.attach('#board',opts);
+  if (location.pathname.search(/\/(AddVM|UpdateVM|AddContainer|UpdateContainer)/)==-1) {
+    $('blockquote.inline_help').each(function(i) {
+      $(this).attr('id','helpinfo'+i);
+      var pin = $(this).prev();
+      if (!pin.prop('nodeName')) pin = $(this).parent().prev();
+      while (pin.prop('nodeName') && pin.prop('nodeName').search(/(table|dl)/i)==-1) pin = pin.prev();
+      pin.find('tr:first,dt:last').each(function() {
+        var node = $(this);
+        var name = node.prop('nodeName').toLowerCase();
+        if (name=='dt') {
+          while (!node.html() || node.html().search(/(<input|<select|nbsp;)/i)>=0 || name!='dt') {
+            if (name=='dt' && node.is(':first-of-type')) break;
+            node = node.prev();
+            name = node.prop('nodeName').toLowerCase();
+          }
+          node.css('cursor','help').click(function(){$('#helpinfo'+i).toggle('slow');});
+        } else {
+          if (node.html() && (name!='tr' || node.children('td:first').html())) node.css('cursor','help').click(function(){$('#helpinfo'+i).toggle('slow');});
+        }
+      });
+    });
+  }
+  $('form').append($('<input>').attr({type:'hidden', name:'csrf_token', value:csrf_token}));
+});
+</script>
+</body>
+</html>

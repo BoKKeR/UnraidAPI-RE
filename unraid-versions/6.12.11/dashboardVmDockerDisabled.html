@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>UNRAIDVM/Dashboard</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Security-Policy" content="block-all-mixed-content">
+<meta name="format-detection" content="telephone=no">
+<meta name="viewport" content="width=1300">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="same-origin">
+<link type="image/png" rel="shortcut icon" href="/webGui/images/green-on.png">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/default-fonts.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/default-cases.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/font-awesome.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/context.standalone.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/jquery.sweetalert.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/default-white.css?v=1700087630">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/dynamix-white.css?v=1700087630">
+<style>
+.inline_help{display:none}
+.upgrade_notice{position:fixed;top:24px;left:50%;margin-left:-480px;width:900px;height:38px;line-height:38px;color:#e68a00;background-color:#feefb3;border:#e68a00 1px solid;border-radius:38px;text-align:center;font-size:1.4rem;z-index:999}
+.upgrade_notice.done{color:#4f8a10;background-color:#dff2bf;border-color:#4f8a10}
+.upgrade_notice.alert{color:#f0000c;background-color:#ff9e9e;border-color:#f0000c}
+.upgrade_notice i{float:right;cursor:pointer}
+.back_to_top{display:none;position:fixed;bottom:30px;right:12px;color:#e22828;font-size:2.5rem;z-index:999}
+span.big.blue-text{cursor:pointer}
+i.abortOps{font-size:2rem;float:right;margin-right:20px;margin-top:8px;cursor:pointer}
+pre#swalbody p{margin-block-end:1em}
+#header.image{background-image:url(/webGui/images/banner.png)}
+</style>
+
+<noscript>
+<div class="upgrade_notice">Your browser has JavaScript disabled</div>
+</noscript>
+
+<script src="/webGui/javascript/dynamix.js?v=1706635116"></script>
+<script src="/webGui/javascript/translate.en_US.js?v=1700086926"></script>
+<script>
+String.prototype.actionName = function(){return this.split(/[\\/]/g).pop();}
+String.prototype.channel = function(){return this.split(':')[1].split(',').findIndex((e)=>/\[\d\]/.test(e));}
+
+Shadowbox.init({skipSetup:true});
+context.init();
+
+// server uptime
+var uptime = 1028.59;
+var expiretime = 0;
+var before = new Date();
+
+// page timer events
+const timers = {};
+timers.bannerWarning = null;
+
+// tty window
+var tty_window = null;
+
+const addAlert = {};
+addAlert.text = $.cookie('addAlert-text');
+addAlert.cmd = $.cookie('addAlert-cmd');
+addAlert.plg = $.cookie('addAlert-plg');
+addAlert.func = $.cookie('addAlert-func');
+
+// current csrf_token
+var csrf_token = "63F1FD87F6F1C333";
+
+// form has unsaved changes indicator
+var formHasUnsavedChanges = false;
+
+// docker progess indicators
+var progress_dots = [], progress_span = [];
+function pauseEvents(id) {
+  $.each(timers, function(i,timer){
+    if (!id || i==id) clearTimeout(timer);
+  });
+}
+function resumeEvents(id,delay) {
+  var startDelay = delay||50;
+  $.each(timers, function(i,timer) {
+    if (!id || i==id) timers[i] = setTimeout(i+'()', startDelay);
+    startDelay += 50;
+  });
+}
+function plus(value,single,plural,last) {
+  return value>0 ? (value+' '+(value==1?single:plural)+(last?'':', ')) : '';
+}
+function updateTime() {
+  var now = new Date();
+  var days = parseInt(uptime/86400);
+  var hour = parseInt(uptime/3600%24);
+  var mins = parseInt(uptime/60%60);
+  $('span.uptime').html(((days|hour|mins)?plus(days,"day","days",(hour|mins)==0)+plus(hour,"hour","hours",mins==0)+plus(mins,"minute","minutes",true):"less than a minute"));
+  uptime += Math.round((now.getTime() - before.getTime())/1000);
+  before = now;
+  if (expiretime > 0) {
+    var remainingtime = expiretime - now.getTime()/1000;
+    if (remainingtime > 0) {
+      days = parseInt(remainingtime/86400);
+      hour = parseInt(remainingtime/3600%24);
+      mins = parseInt(remainingtime/60%60);
+      if (days) {
+        $('#licenseexpire').html(plus(days,"day","days",true)+" remaining");
+      } else if (hour) {
+        $('#licenseexpire').html(plus(hour,"hour","hours",true)+" remaining").addClass('orange-text');
+      } else if (mins) {
+        $('#licenseexpire').html(plus(mins,"minute","minutes",true)+" remaining").addClass('red-text');
+      } else {
+        $('#licenseexpire').html("less than a minute remaining").addClass('red-text');
+      }
+    } else {
+      $('#licenseexpire').addClass('red-text');
+    }
+  }
+  setTimeout(updateTime,1000);
+}
+function refresh(top) {
+  if (typeof top === 'undefined') {
+    for (var i=0,element; element=document.querySelectorAll('input,button,select')[i]; i++) {element.disabled = true;}
+    for (var i=0,link; link=document.getElementsByTagName('a')[i]; i++) { link.style.color = "gray"; } //fake disable
+    location.reload();
+  } else {
+    $.cookie('top',top);
+    location.reload();
+  }
+}
+function initab(page) {
+  $.removeCookie('one');
+  $.removeCookie('tab');
+  if (page != null) location.replace(page);
+}
+function settab(tab) {
+  $.cookie(($.cookie('one')==null?'tab':'one'),tab);
+}
+function done(key) {
+  var url = location.pathname.split('/');
+  var path = '/'+url[1];
+  if (key) for (var i=2; i<url.length; i++) if (url[i]==key) break; else path += '/'+url[i];
+  $.removeCookie('one');
+  location.replace(path);
+}
+function chkDelete(form, button) {
+  button.value = form.confirmDelete.checked ? "Delete" : "Apply";
+  button.disabled = false;
+}
+function makeWindow(name,height,width) {
+  var top = (screen.height-height)/2;
+  if (top < 0) {top = 0; height = screen.availHeight;}
+  var left = (screen.width-width)/2;
+  if (left < 0) {left = 0; width = screen.availWidth;}
+  return window.open('',name,'resizeable=yes,scrollbars=yes,height='+height+',width='+width+',top='+top+',left='+left);
+}
+function openBox(cmd,title,height,width,load,func,id) {
+  // open shadowbox window (run in foreground)
+  // included for legacy purposes, replaced by openPlugin
+  var uri = cmd.split('?');
+  var run = uri[0].substr(-4)=='.php' ? cmd+(uri[1]?'&':'?')+'done=Done' : '/logging.htm?cmd='+cmd+'&csrf_token='+csrf_token+'&done=Done';
+  var options = load ? (func ? {modal:true,onClose:function(){setTimeout(func+'('+'"'+(id||'')+'")');}} : {modal:true,onClose:function(){location.reload();}}) : {modal:false};
+  Shadowbox.open({content:run, player:'iframe', title:title, height:Math.min(screen.availHeight,800), width:Math.min(screen.availWidth,1200), options:options});
+}
+function openWindow(cmd,title,height,width) {
+  // open regular window (run in background)
+  // included for legacy purposes, replaced by openTerminal
+  var window_name = title.replace(/ /g,"_");
+  var form_html = '<form action="/logging.htm" method="post" target="'+window_name+'">'+'<input type="hidden" name="csrf_token" value="'+csrf_token+'">'+'<input type="hidden" name="title" value="'+title+'">';
+  var vars = cmd.split('&');
+  form_html += '<input type="hidden" name="cmd" value="'+vars[0]+'">';
+  for (var i = 1; i < vars.length; i++) {
+    var pair = vars[i].split('=');
+    form_html += '<input type="hidden" name="'+pair[0]+'" value="'+pair[1]+'">';
+  }
+  form_html += '</form>';
+  var form = $(form_html);
+  $('body').append(form);
+  makeWindow(window_name,height,width);
+  form.submit();
+}
+function openTerminal(tag,name,more) {
+  if (/MSIE|Edge/.test(navigator.userAgent)) {
+    swal({title:"_(Unsupported Feature)_",text:"_(Sorry, this feature is not supported by MSIE/Edge)_.<br>_(Please try a different browser)_",type:'error',html:true,confirmButtonText:"_(Ok)_"});
+    return;
+  }
+  // open terminal window (run in background)
+  name = name.replace(/[ #]/g,"_");
+  tty_window = makeWindow(name+(more=='.log'?more:''),Math.min(screen.availHeight,800),Math.min(screen.availWidth,1200));
+  var socket = ['ttyd','syslog'].includes(tag) ? '/webterminal/'+tag+'/' : '/logterminal/'+name+(more=='.log'?more:'')+'/';
+  $.get('/webGui/include/OpenTerminal.php',{tag:tag,name:name,more:more},function(){setTimeout(function(){tty_window.location=socket; tty_window.focus();},200);});
+}
+function bannerAlert(text,cmd,plg,func,start) {
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd,pid:1},function(pid) {
+    if (pid == 0) {
+      if ($(".upgrade_notice").hasClass('done') || timers.bannerAlert == null) {
+        forcedBanner = false;
+        if ($.cookie('addAlert') != null) {
+          removeBannerWarning($.cookie('addAlert'));
+          $.removeCookie('addAlert');
+        }
+        $(".upgrade_notice").removeClass('alert done');
+        timers.callback = null;
+        if (plg != null) {
+          if ($.cookie('addAlert-page') == null || $.cookie('addAlert-page') == 'Dashboard') {
+            setTimeout((func||'loadlist')+'("'+plg+'")',250);
+          } else if ('Plugins' == 'Dashboard') {
+            setTimeout(refresh);
+          }
+        }
+        $.removeCookie('addAlert-page');
+      } else {
+        $(".upgrade_notice").removeClass('alert').addClass('done');
+        timers.bannerAlert = null;
+        setTimeout(function(){bannerAlert(text,cmd,plg,func,start);},1000);
+      }
+    } else {
+      $.cookie('addAlert',addBannerWarning(text,true,true,true));
+      $.cookie('addAlert-text',text);
+      $.cookie('addAlert-cmd',cmd);
+      $.cookie('addAlert-plg',plg);
+      $.cookie('addAlert-func',func);
+      if ($.cookie('addAlert-page') == null) $.cookie('addAlert-page','Dashboard');
+      timers.bannerAlert = setTimeout(function(){bannerAlert(text,cmd,plg,func,start);},1000);
+      if (start==1 && timers.callback==null && plg!=null) timers.callback = setTimeout((func||'loadlist')+'("'+plg+'")',250);
+    }
+  });
+}
+function openPlugin(cmd,title,plg,func,start=0,button=0) {
+  // start  = 0 : run command only when not already running (default)
+  // start  = 1 : run command unconditionally
+  // button = 0 : show CLOSE button (default)
+  // button = 1 : hide CLOSE button
+  nchan_plugins.start();
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd+' nchan',start:start},function(pid) {
+    if (pid==0) {
+      nchan_plugins.stop();
+      $('div.spinner.fixed').hide();
+      $(".upgrade_notice").addClass('alert');
+      return;
+    }
+    swal({title:title,text:"<pre id='swaltext'></pre><hr>",html:true,animation:'none',showConfirmButton:button==0,confirmButtonText:"Close"},function(close){
+      nchan_plugins.stop();
+      $('div.spinner.fixed').hide();
+      $('.sweet-alert').hide('fast').removeClass('nchan');
+      setTimeout(function(){bannerAlert("Attention - operation continues in background ["+pid.toString().padStart(8,'0')+"]<i class='fa fa-bomb fa-fw abortOps' title=\"Abort background process\" onclick='abortOperation("+pid+")'></i>",cmd,plg,func,start);});
+    });
+    $('.sweet-alert').addClass('nchan');
+    $('button.confirm').prop('disabled',button!=0);
+  });
+}
+function openDocker(cmd,title,plg,func,start=0,button=0) {
+  // start  = 0 : run command only when not already running (default)
+  // start  = 1 : run command unconditionally
+  // button = 0 : hide CLOSE button (default)
+  // button = 1 : show CLOSE button
+  nchan_docker.start();
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd,start:start},function(pid) {
+    if (pid==0) {
+      nchan_docker.stop();
+      $('div.spinner.fixed').hide();
+      $(".upgrade_notice").addClass('alert');
+      return;
+    }
+    swal({title:title,text:"<pre id='swaltext'></pre><hr>",html:true,animation:'none',showConfirmButton:button!=0,confirmButtonText:"Close"},function(close){
+      nchan_docker.stop();
+      $('div.spinner.fixed').hide();
+      $('.sweet-alert').hide('fast').removeClass('nchan');
+      setTimeout(function(){bannerAlert("Attention - operation continues in background ["+pid.toString().padStart(8,'0')+"]<i class='fa fa-bomb fa-fw abortOps' title=\"Abort background process\" onclick='abortOperation("+pid+")'></i>",cmd,plg,func,start);});
+    });
+    $('.sweet-alert').addClass('nchan');
+    $('button.confirm').prop('disabled',button==0);
+  });
+}
+function abortOperation(pid) {
+  swal({title:"Abort background operation",text:"This may leave an unknown state",html:true,animation:'none',type:'warning',showCancelButton:true,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(){
+    $.post('/webGui/include/StartCommand.php',{kill:pid},function() {
+      clearTimeout(timers.bannerAlert);
+      timers.bannerAlert = null;
+      timers.callback = null;
+      forcedBanner = false;
+      removeBannerWarning($.cookie('addAlert'));
+      $.removeCookie('addAlert');
+      $(".upgrade_notice").removeClass('alert done').hide();
+    });
+  });
+}
+function openChanges(cmd,title,nchan,button=0) {
+  // button = 0 : hide CLOSE button (default)
+  // button = 1 : show CLOSE button
+  // nchan argument is not used, exists for backward compatibility
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd,start:2},function(data) {
+    $('div.spinner.fixed').hide();
+    swal({title:title,text:"<pre id='swalbody'></pre><hr>",html:true,animation:'none',showConfirmButton:button!=0,confirmButtonText:"Close"},function(close){
+      $('.sweet-alert').hide('fast').removeClass('nchan');
+    });
+    $('.sweet-alert').addClass('nchan');
+    $('pre#swalbody').html(data);
+    $('button.confirm').text("Done").prop('disabled',false).show();
+  });
+}
+function openAlert(cmd,title,func) {
+  $.post('/webGui/include/StartCommand.php',{cmd:cmd,start:2},function(data) {
+    $('div.spinner.fixed').hide();
+    swal({title:title,text:"<pre id='swalbody'></pre><hr>",html:true,animation:'none',showCancelButton:true,closeOnConfirm:false,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(proceed){
+      if (proceed) setTimeout(func+'()');
+    });
+    $('.sweet-alert').addClass('nchan');
+    $('pre#swalbody').html(data);
+  });
+}
+function openDone(data) {
+  if (data == '_DONE_') {
+    $('div.spinner.fixed').hide();
+    $('button.confirm').text("Done").prop('disabled',false).show();
+    if ( typeof ca_done_override !== 'undefined' ) {
+      if (ca_done_override == true) {
+        $("button.confirm").trigger("click");
+        ca_done_override = false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+function showStatus(name,plugin,job) {
+  $.post('/webGui/include/ProcessStatus.php',{name:name,plugin:plugin,job:job},function(status){$(".tabs").append(status);});
+}
+function showFooter(data, id) {
+  if (id !== undefined) $('#'+id).remove();
+  $('#copyright').prepend(data);
+}
+function showNotice(data) {
+  $('#user-notice').html(data.replace(/<a>(.*)<\/a>/,"<a href='/Plugins'>$1</a>"));
+}
+function escapeQuotes(form) {
+  $(form).find('input[type=text]').each(function(){$(this).val($(this).val().replace(/"/g,'\\"'));});
+}
+
+// Banner warning system
+var bannerWarnings = [];
+var currentBannerWarning = 0;
+var osUpgradeWarning = false;
+var forcedBanner = false;
+
+function addBannerWarning(text, warning=true, noDismiss=false, forced=false) {
+  var cookieText = text.replace(/[^a-z0-9]/gi,'');
+  if ($.cookie(cookieText) == "true") return false;
+  if (warning) text = "<i class='fa fa-warning fa-fw' style='float:initial'></i> "+text;
+  if (bannerWarnings.indexOf(text) < 0) {
+    if (forced) {
+      var arrayEntry = 0; bannerWarnings = []; clearTimeout(timers.bannerWarning); timers.bannerWarning = null; forcedBanner = true;
+    } else {
+      var arrayEntry = bannerWarnings.push("placeholder") - 1;
+    }
+    if (!noDismiss) text += "<a class='bannerDismiss' onclick='dismissBannerWarning("+arrayEntry+",&quot;"+cookieText+"&quot;)'></a>";
+    bannerWarnings[arrayEntry] = text;
+  } else {
+    return bannerWarnings.indexOf(text);
+  }
+  if (timers.bannerWarning==null) showBannerWarnings();
+  return arrayEntry;
+}
+
+function dismissBannerWarning(entry,cookieText) {
+  $.cookie(cookieText,"true",{expires:30}); // reset after 1 month
+  removeBannerWarning(entry);
+}
+
+function removeBannerWarning(entry) {
+  if (forcedBanner) return;
+  bannerWarnings[entry] = false;
+  clearTimeout(timers.bannerWarning);
+  showBannerWarnings();
+}
+
+function bannerFilterArray(array) {
+  var newArray = [];
+  array.filter(function(value,index,arr) {
+    if (value) newArray.push(value);
+  });
+  return newArray;
+}
+
+function showBannerWarnings() {
+  var allWarnings = bannerFilterArray(Object.values(bannerWarnings));
+  if (allWarnings.length == 0) {
+    $(".upgrade_notice").hide();
+    timers.bannerWarning = null;
+    return;
+  }
+  if (currentBannerWarning >= allWarnings.length) currentBannerWarning = 0;
+  $(".upgrade_notice").show().html(allWarnings[currentBannerWarning]);
+  currentBannerWarning++;
+  timers.bannerWarning = setTimeout(showBannerWarnings,3000);
+}
+
+function addRebootNotice(message="You must reboot for changes to take effect") {
+  addBannerWarning("<i class='fa fa-warning' style='float:initial;'></i> "+message,false,true);
+  $.post("/plugins/dynamix.plugin.manager/scripts/PluginAPI.php",{action:'addRebootNotice',message:message});
+}
+
+function removeRebootNotice(message="You must reboot for changes to take effect") {
+  var bannerIndex = bannerWarnings.indexOf("<i class='fa fa-warning' style='float:initial;'></i> "+message);
+  if (bannerIndex < 0) return;
+  removeBannerWarning(bannerIndex);
+  $.post("/plugins/dynamix.plugin.manager/scripts/PluginAPI.php",{action:'removeRebootNotice',message:message});
+}
+
+function showUpgradeChanges() {
+  openChanges("showchanges /tmp/plugins/unRAIDServer.txt","Release Notes");
+}
+function showUpgrade(text,noDismiss=false) {
+  if ($.cookie('os_upgrade')==null) {
+    if (osUpgradeWarning) removeBannerWarning(osUpgradeWarning);
+    osUpgradeWarning = addBannerWarning(text.replace(/<a>(.+?)<\/a>/,"<a href='#' onclick='openUpgrade()'>$1</a>").replace(/<b>(.*)<\/b>/,"<a href='#' onclick='document.rebootNow.submit()'>$1</a>"),false,noDismiss);
+  }
+}
+function hideUpgrade(set) {
+  removeBannerWarning(osUpgradeWarning);
+  if (set)
+    $.cookie('os_upgrade','true');
+  else
+    $.removeCookie('os_upgrade');
+}
+function confirmUpgrade(confirm) {
+  if (confirm) {
+    swal({title:"Update Unraid OS",text:"Do you want to update to the new version?",type:'warning',html:true,showCancelButton:true,closeOnConfirm:false,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(){
+      openPlugin("plugin update unRAIDServer.plg","Update Unraid OS");
+    });
+  } else {
+    openPlugin("plugin update unRAIDServer.plg","Update Unraid OS");
+  }
+}
+function openUpgrade() {
+  hideUpgrade();
+  $.get('/plugins/dynamix.plugin.manager/include/ShowPlugins.php',{cmd:'alert'},function(data) {
+    if (data==0) {
+      // no alert message - proceed with upgrade
+      confirmUpgrade(true);
+    } else {
+      // show alert message and ask for confirmation
+      openAlert("showchanges /tmp/plugins/my_alerts.txt","Alert Message",'confirmUpgrade');
+    }
+  });
+}
+function digits(number) {
+  if (number < 10) return 'one';
+  if (number < 100) return 'two';
+  return 'three';
+}
+function openNotifier(filter) {
+  $.post('/webGui/include/Notify.php',{cmd:'get',csrf_token:csrf_token},function(msg) {
+    $.each($.parseJSON(msg), function(i, notify) {
+      if (notify.importance==filter) {
+        $.jGrowl(notify.subject+'<br>'+notify.description, {
+          group: notify.importance,
+          header: notify.event+': '+notify.timestamp,
+          theme: notify.file,
+          sticky: true,
+          beforeOpen: function(e,m,o){if ($('div.jGrowl-notification').hasClass(notify.file)) return(false);},
+          afterOpen: function(e,m,o){if (notify.link) $(e).css('cursor','pointer');},
+          click: function(e,m,o){if (notify.link) location.replace(notify.link);},
+          close: function(e,m,o){$.post('/webGui/include/Notify.php',{cmd:'archive',file:notify.file,csrf_token:csrf_token});}
+        });
+      }
+    });
+  });
+}
+function closeNotifier(filter) {
+  $.post('/webGui/include/Notify.php',{cmd:'get',csrf_token:csrf_token},function(msg) {
+    $.each($.parseJSON(msg), function(i, notify) {
+      if (notify.importance==filter) $.post('/webGui/include/Notify.php',{cmd:'archive',file:notify.file,csrf_token:csrf_token});
+    });
+    $('div.jGrowl').find('.'+filter).find('div.jGrowl-close').trigger('click');
+  });
+}
+function viewHistory(filter) {
+  location.replace('/Tools/NotificationsArchive?filter='+filter);
+}
+function flashReport() {
+  $.post('/webGui/include/Report.php',{cmd:'config'},function(check){
+    if (check>0) addBannerWarning("Your flash drive is corrupted or offline. Post your diagnostics in the forum for help. <a target='_blank' href='https://docs.unraid.net/unraid-os/manual/changing-the-flash-device'>See also here</a>");
+  });
+}
+$(function() {
+  var tab = $.cookie('one')||$.cookie('tab')||'tab1';
+  if (tab=='tab0') tab = 'tab'+$('input[name$="tabs"]').length; else if ($('#'+tab).length==0) {initab(); tab = 'tab1';}
+  if ($.cookie('help')=='help') {$('.inline_help').show(); $('.nav-item.HelpButton').addClass('active');}
+  $('#'+tab).attr('checked', true);
+  updateTime();
+  $.jGrowl.defaults.closeTemplate = '<i class="fa fa-close"></i>';
+  $.jGrowl.defaults.closerTemplate = '<div class="top">[ close all notifications ]</div>';
+  $.jGrowl.defaults.position = 'top-right';
+  $.jGrowl.defaults.theme = '';
+  $.jGrowl.defaults.themeState = '';
+  $.jGrowl.defaults.pool = 10;
+  $.jGrowl.defaults.life = 5000;
+  Shadowbox.setup('a.sb-enable', {modal:true});
+// add any pre-existing reboot notices
+  $.post('/webGui/include/Report.php',{cmd:'notice'},function(notices){
+    notices = notices.split('\n');
+    for (var i=0,notice; notice=notices[i]; i++) addBannerWarning("<i class='fa fa-warning' style='float:initial;'></i> "+notice,false,true);
+  });
+// check for flash offline / corrupted (delayed).
+  timers.flashReport = setTimeout(flashReport,6000);
+});
+
+var mobiles=['ipad','iphone','ipod','android'];
+var device=navigator.platform.toLowerCase();
+for (var i=0,mobile; mobile=mobiles[i]; i++) {
+  if (device.indexOf(mobile)>=0) {$('#footer').css('position','static'); break;}
+}
+$.ajaxPrefilter(function(s, orig, xhr){
+  if (s.type.toLowerCase() == "post" && !s.crossDomain) {
+    s.data = s.data || "";
+    s.data += s.data?"&":"";
+    s.data += "csrf_token="+csrf_token;
+  }
+});
+</script>
+<style>
+#header {
+    z-index: 102 !important;
+    display: -webkit-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-pack: justify;
+    -ms-flex-pack: justify;
+    justify-content: space-between;
+    -webkit-box-align: center;
+    -ms-flex-align: center;
+    align-items: center;
+}
+#header unraid-i18n-host {
+    font-size: 16px;
+    margin-left: auto;
+    height: 100%;
+}
+
+/**
+ * Tools page, rotate the Downgrade icon to prevent needing to add a new icon to the icon font.
+ * The pseudo element is targeted here otherwise the rotation of the span would mess up spacing with the text.
+ */
+a[href="/Tools/Downgrade"] .icon-update:before {
+    display: inline-block; /* required otherwise the rotation won't work */
+    rotate: 180deg;
+}
+</style>
+<script src="/plugins/dynamix.my.servers/unraid-components/_nuxt/unraid-components.client-cd1b3939.js"></script></head>
+<body>
+ <div id="template">
+  <div class="upgrade_notice" style="display:none"></div>
+  <div id="header" class="">
+   <div class="logo">
+   <a href="https://unraid.net" target="_blank"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 222.36 39.04"><defs><linearGradient id="header-logo" x1="47.53" y1="79.1" x2="170.71" y2="-44.08" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e32929"/><stop offset="1" stop-color="#ff8d30"/></linearGradient></defs><title>unraid.net</title><path d="M146.7,29.47H135l-3,9h-6.49L138.93,0h8l13.41,38.49h-7.09L142.62,6.93l-5.83,16.88h8ZM29.69,0V25.4c0,8.91-5.77,13.64-14.9,13.64S0,34.31,0,25.4V0H6.54V25.4c0,5.17,3.19,7.92,8.25,7.92s8.36-2.75,8.36-7.92V0ZM50.86,12v26.5H44.31V0h6.11l17,26.5V0H74V38.49H67.9ZM171.29,0h6.54V38.49h-6.54Zm51.07,24.69c0,9-5.88,13.8-15.17,13.8H192.67V0H207.3c9.18,0,15.06,4.78,15.06,13.8ZM215.82,13.8c0-5.28-3.3-8.14-8.52-8.14h-8.08V32.77h8c5.33,0,8.63-2.8,8.63-8.08ZM108.31,23.92c4.34-1.6,6.93-5.28,6.93-11.55C115.24,3.68,110.18,0,102.48,0H88.84V38.49h6.55V5.66h6.87c3.8,0,6.21,1.82,6.21,6.71s-2.41,6.76-6.21,6.76H98.88l9.21,19.36h7.53Z" fill="url(#header-logo)"/></svg>
+</a>
+   <unraid-i18n-host><unraid-header-os-version></unraid-header-os-version></unraid-i18n-host>
+   </div>
+   <script>
+window.LOCALE_DATA = '%7B%22%22%3A%7B%22%7B0%7D%20%7B1%7D%20Key%5Cu2026%22%3A%22%7B0%7D%20%7B1%7D%20Key%5Cu2026%22%2C%22%7B0%7D%20devices%22%3A%22%7B0%7D%20devices%22%2C%22%7B0%7D%20out%20of%20%7B1%7D%20allowed%20devices%20%5Cu2013%20upgrade%20your%20key%20to%20support%20more%20devices%22%3A%22%7B0%7D%20out%20of%20%7B1%7D%20allowed%20devices%20%5Cu2013%20upgrade%20your%20key%20to%20support%20more%20devices%22%2C%22%7B0%7D%20out%20of%20%7B1%7D%20devices%22%3A%22%7B0%7D%20out%20of%20%7B1%7D%20devices%22%2C%22%7B0%7D%20Release%20Notes%22%3A%22%7B0%7D%20Release%20Notes%22%2C%22%7B0%7D%20Signed%20In%20Successfully%22%3A%22%7B0%7D%20Signed%20In%20Successfully%22%2C%22%7B0%7D%20Signed%20Out%20Successfully%22%3A%22%7B0%7D%20Signed%20Out%20Successfully%22%2C%22%7B0%7D%20Update%20Available%22%3A%22%7B0%7D%20Update%20Available%22%2C%22%7B1%7D%20Key%20%7B0%7D%20Successfully%22%3A%22%7B0%7D%20Key%20%7B1%7D%20Successfully%22%2C%22%3Cp%3EIt%20is%20not%20possible%20to%20use%20a%20Trial%20key%20with%20an%20existing%20Unraid%20OS%20installation.%3C%2Fp%3E%3Cp%3EYou%20may%20purchase%20a%20license%20key%20corresponding%20to%20this%20USB%20Flash%20device%20to%20continue%20using%20this%20installation.%3C%2Fp%3E%22%3A%22%3Cp%3EIt%20is%20not%20possible%20to%20use%20a%20Trial%20key%20with%20an%20existing%20Unraid%20OS%20installation%3C%2Fp%3E%3Cp%3EYou%20may%20purchase%20a%20license%20key%20corresponding%20to%20this%20USB%20Flash%20device%20to%20continue%20using%20this%20installation.%3C%2Fp%3E%22%2C%22%3Cp%3EPlease%20refresh%20the%20page%20to%20ensure%20you%20load%20your%20latest%20configuration%3C%2Fp%3E%22%3A%22%3Cp%3EPlease%20refresh%20the%20page%20to%20ensure%20you%20load%20your%20latest%20configuration%3C%2Fp%3E%22%2C%22%3Cp%3ERegister%20for%20Connect%20by%20signing%20in%20to%20your%20Unraid.net%20account%3C%2Fp%3E%22%3A%22%3Cp%3ERegister%20for%20Connect%20by%20signing%20in%20to%20your%20Unraid.net%20account%3C%2Fp%3E%22%2C%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key.%3C%2Fp%3E%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%3C%2Fp%3E%22%3A%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key%3C%2Fp%3E%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%3C%2Fp%3E%22%2C%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key.%3C%2Fp%3E%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20is%20blacklisted.%3C%2Fp%3E%22%3A%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%20or%20choose%20Purchase%20Key%3C%2Fp%3E%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20is%20blacklisted.%3C%2Fp%3E%22%2C%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device.%3C%2Fp%3E%3Cp%3EYou%20may%20also%20attempt%20to%20Purchase%20or%20Replace%20your%20key.%3C%2Fp%3E%22%3A%22%3Cp%3EThe%20license%20key%20file%20does%20not%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20copy%20the%20correct%20key%20file%20to%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%3Cp%3EYou%20may%20also%20attempt%20to%20Purchase%20or%20Replace%20your%20key.%3C%2Fp%3E%22%2C%22%3Cp%3EThere%20are%20multiple%20license%20key%20files%20present%20on%20your%20USB%20flash%20device%20and%20none%20of%20them%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20remove%20all%20key%20files%2C%20except%20the%20one%20you%20want%20to%20replace%2C%20from%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device.%3C%2Fp%3E%3Cp%3EAlternately%20you%20may%20purchase%20a%20license%20key%20for%20this%20USB%20flash%20device.%3C%2Fp%3E%3Cp%3EIf%20you%20want%20to%20replace%20one%20of%20your%20license%20keys%20with%20a%20new%20key%20bound%20to%20this%20USB%20Flash%20device%2C%20please%20first%20remove%20all%20other%20key%20files%20first.%3C%2Fp%3E%22%3A%22%3Cp%3EThere%20are%20multiple%20license%20key%20files%20present%20on%20your%20USB%20flash%20device%20and%20none%20of%20them%20correspond%20to%20the%20USB%20Flash%20boot%20device.%20Please%20remove%20all%20key%20files%2C%20except%20the%20one%20you%20want%20to%20replace%2C%20from%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%3Cp%3EAlternately%20you%20may%20purchase%20a%20license%20key%20for%20this%20USB%20flash%20device%3C%2Fp%3E%3Cp%3EIf%20you%20want%20to%20replace%20one%20of%20your%20license%20keys%20with%20a%20new%20key%20bound%20to%20this%20USB%20Flash%20device%2C%20please%20first%20remove%20all%20other%20key%20files%20first.%3C%2Fp%3E%22%2C%22%3Cp%3EThere%20is%20a%20physical%20problem%20accessing%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%22%3A%22%3Cp%3EThere%20is%20a%20physical%20problem%20accessing%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%22%2C%22%3Cp%3EThere%20is%20a%20problem%20with%20your%20USB%20Flash%20device%3C%2Fp%3E%22%3A%22%3Cp%3EThere%20is%20a%20problem%20with%20your%20USB%20Flash%20device%3C%2Fp%3E%22%2C%22%3Cp%3EThis%20USB%20Flash%20boot%20device%20has%20been%20blacklisted.%20This%20can%20occur%20as%20a%20result%20of%20transferring%20your%20license%20key%20to%20a%20replacement%20USB%20Flash%20device%2C%20and%20you%20are%20currently%20booted%20from%20your%20old%20USB%20Flash%20device.%3C%2Fp%3E%3Cp%3EA%20USB%20Flash%20device%20may%20also%20be%20blacklisted%20if%20we%20discover%20the%20serial%20number%20is%20not%20unique%20%5Cu2013%20this%20is%20common%20with%20USB%20card%20readers.%3C%2Fp%3E%22%3A%22%3Cp%3EThis%20USB%20Flash%20boot%20device%20has%20been%20blacklisted.%20This%20can%20occur%20as%20a%20result%20of%20transferring%20your%20license%20key%20to%20a%20replacement%20USB%20Flash%20device%2C%20and%20you%20are%20currently%20booted%20from%20your%20old%20USB%20Flash%20device.%3C%2Fp%3E%3Cp%3EA%20USB%20Flash%20device%20may%20also%20be%20blacklisted%20if%20we%20discover%20the%20serial%20number%20is%20not%20unique%20%5Cu2013%20this%20is%20common%20with%20USB%20card%20readers.%3C%2Fp%3E%22%2C%22%3Cp%3EThis%20USB%20Flash%20device%20has%20an%20invalid%20GUID.%20Please%20try%20a%20different%20USB%20Flash%20device%3C%2Fp%3E%22%3A%22%3Cp%3EThis%20USB%20Flash%20device%20has%20an%20invalid%20GUID.%20Please%20try%20a%20different%20USB%20Flash%20device%3C%2Fp%3E%22%2C%22%3Cp%3ETo%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%20Alternately%2C%20you%20may%20request%20a%20Trial%20extension.%3C%2Fp%3E%22%3A%22%3Cp%3ETo%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%20Alternately%2C%20you%20may%20request%20a%20Trial%20extension.%3C%2Fp%3E%22%2C%22%3Cp%3ETo%20support%20more%20storage%20devices%20as%20your%20server%20grows%2C%20click%20Upgrade%20Key.%3C%2Fp%3E%22%3A%22%3Cp%3ETo%20support%20more%20storage%20devices%20as%20your%20server%20grows%2C%20click%20Upgrade%20Key.%3C%2Fp%3E%22%2C%22%3Cp%3EYou%20have%20used%20all%20your%20Trial%20extensions.%20To%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%3A%22%3Cp%3EYou%20have%20used%20all%20your%20Trial%20extensions.%20To%20continue%20using%20Unraid%20OS%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20%3Cem%3ETrial%3C%2Fem%3E%20key%20includes%20all%20the%20functionality%20and%20device%20support%20of%20an%20%3Cem%3EUnleashed%3C%2Fem%3E%20key.%3C%2Fp%3E%3Cp%3EAfter%20your%20%3Cem%3ETrial%3C%2Fem%3E%20has%20reached%20expiration%2C%20your%20server%20%3Cstrong%3Estill%20functions%20normally%3C%2Fstrong%3E%20until%20the%20next%20time%20you%20Stop%20the%20array%20or%20reboot%20your%20server.%3C%2Fp%3E%3Cp%3EAt%20that%20point%20you%20may%20either%20purchase%20a%20license%20key%20or%20request%20a%20%3Cem%3ETrial%3C%2Fem%3E%20extension.%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20%3Cb%3ETrial%3C%2Fb%3E%20key%20includes%20all%20the%20functionality%20and%20device%20support%20of%20an%20%3Cb%3EUnleashed%3C%2Fb%3E%20key%3C%2Fp%3E%3Cp%3EAfter%20your%20%3Cb%3ETrial%3C%2Fb%3E%20has%20reached%20expiration%2C%20your%20server%20%3Ci%3Estill%20functions%20normally%3C%2Fi%3E%20until%20the%20next%20time%20you%20Stop%20the%20array%20or%20reboot%20your%20server%3C%2Fp%3E%3Cp%3EAt%20that%20point%20you%20may%20either%20purchase%20a%20license%20key%20or%20request%20a%20%3Ci%3ETrial%3C%2Fi%3E%20extension.%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device.%3C%2Fp%3E%3Cp%3EIf%20you%20do%20not%20have%20a%20backup%20copy%20of%20your%20license%20key%20file%20you%20may%20attempt%20to%20recover%20your%20key.%3C%2Fp%3E%3Cp%3EIf%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%3Cp%3EIf%20you%20do%20not%20have%20a%20backup%20copy%20of%20your%20license%20key%20file%20you%20may%20attempt%20to%20recover%20your%20key%20with%20your%20Unraid.net%20account%3C%2Fp%3E%3Cp%3EIf%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device.%3C%2Fp%3E%3Cp%3EYou%20may%20attempt%20to%20recover%20your%20key%20with%20your%20Unraid.net%20account.%3C%2Fp%3E%3Cp%3EIf%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20license%20key%20file%20is%20corrupted%20or%20missing.%20The%20key%20file%20should%20be%20located%20in%20the%20%2Fconfig%20directory%20on%20your%20USB%20Flash%20boot%20device%3C%2Fp%3E%3Cp%3EIf%20you%20do%20not%20have%20a%20backup%20copy%20of%20your%20license%20key%20file%20you%20may%20attempt%20to%20recover%20your%20key%20with%20your%20Unraid.net%20account%3C%2Fp%3E%3Cp%3EIf%20this%20was%20an%20expired%20Trial%20installation%2C%20you%20may%20purchase%20a%20license%20key.%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20server%20will%20not%20be%20usable%20until%20you%20purchase%20a%20Registration%20key%20or%20install%20a%20free%2030%20day%20%3Cem%3ETrial%3C%2Fem%3E%20key.%20A%20%3Cem%3ETrial%3C%2Fem%3E%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key.%3C%2Fp%3E%3Cp%3ERegistration%20keys%20are%20bound%20to%20your%20USB%20Flash%20boot%20device%20serial%20number%20%28GUID%29.%20Please%20use%20a%20high%20quality%20name%20brand%20device%20at%20least%201GB%20in%20size.%3C%2Fp%3E%3Cp%3ENote%3A%20USB%20memory%20card%20readers%20are%20generally%20not%20supported%20because%20most%20do%20not%20present%20unique%20serial%20numbers.%3C%2Fp%3E%3Cp%3E%3Cstrong%3EImportant%3A%3C%2Fstrong%3E%3C%2Fp%3E%3Cul%20class%3D%5C%22list-disc%20pl-16px%5C%22%3E%3Cli%3EPlease%20make%20sure%20your%20server%20time%20is%20accurate%20to%20within%205%20minutes%3C%2Fli%3E%3Cli%3EPlease%20make%20sure%20there%20is%20a%20DNS%20server%20specified%3C%2Fli%3E%3C%2Ful%3E%22%3A%22%3Cp%3EYour%20server%20will%20not%20be%20usable%20until%20you%20purchase%20a%20Registration%20key%20or%20install%20a%20free%2030%20day%20%3Cem%3ETrial%3C%2Fem%3E%20key.%20A%20%3Cem%3ETrial%3C%2Fem%3E%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key.%3C%2Fp%3E%3Cp%3ERegistration%20keys%20are%20bound%20to%20your%20USB%20Flash%20boot%20device%20serial%20number%20%28GUID%29.%20Please%20use%20a%20high%20quality%20name%20brand%20device%20at%20least%201GB%20in%20size.%3C%2Fp%3E%3Cp%3ENote%3A%20USB%20memory%20card%20readers%20are%20generally%20not%20supported%20because%20most%20do%20not%20present%20unique%20serial%20numbers.%3C%2Fp%3E%3Cp%3E%3Ci%3EImportant%3A%3C%2Fi%3E%3C%2Fp%3E%3Cul%20class%3D%5C%22list-disc%20pl-16px%5C%22%3E%3Cli%3EPlease%20make%20sure%20your%20server%20time%20is%20accurate%20to%20within%205%20minutes%3C%2Fli%3E%3Cli%3EPlease%20make%20sure%20there%20is%20a%20DNS%20server%20specified%3C%2Fli%3E%3E%3C%2Ful%3E%22%2C%22%3Cp%3EYour%20Trial%20key%20requires%20an%20internet%20connection.%3C%2Fp%3E%3Cp%3E%3Ca%20href%3D%5C%22%2FSettings%2FNetworkSettings%5C%22%20class%3D%5C%22underline%5C%22%3EPlease%20check%20Settings%20%3E%20Network%3C%2Fa%3E%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20Trial%20key%20requires%20an%20internet%20connection%3C%2Fp%3E%3Cp%3E%3Ca%20href%3D%5C%22%2FSettings%2FNetworkSettings%5C%22%20class%3D%5C%22underline%5C%22%3EPlease%20check%20Settings%20%3E%20Network%3C%2Fa%3E%3C%2Fp%3E%22%2C%22%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%3C%2Fp%3E%22%3A%22%3Cp%3EYour%20Unraid%20registration%20key%20is%20ineligible%20for%20replacement%20as%20it%20has%20been%20replaced%20within%20the%20last%2012%20months.%3C%2Fp%3E%22%2C%22A%20Trial%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key%22%3A%22A%20Trial%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key%22%2C%22Acklowledge%20that%20you%20have%20made%20a%20Flash%20Backup%20to%20enable%20this%20action%22%3A%22Acklowledge%20that%20you%20have%20made%20a%20Flash%20Backup%20to%20enable%20this%20action%22%2C%22ago%22%3A%22ago%22%2C%22All%20you%20need%20is%20an%20active%20internet%20connection%2C%20an%20Unraid.net%20account%2C%20and%20the%20Connect%20plugin.%20Get%20started%20by%20installing%20the%20plugin.%22%3A%22All%20you%20need%20is%20an%20active%20internet%20connection%2C%20an%20Unraid.net%20account%2C%20and%20the%20Connect%20plugin.%20Get%20started%20by%20installing%20the%20plugin.%22%2C%22Attached%20Storage%20Devices%22%3A%22Attached%20Storage%20Devices%22%2C%22Backing%20up...this%20may%20take%20a%20few%20minutes%22%3A%22Backing%20up...this%20may%20take%20a%20few%20minutes%22%2C%22Basic%22%3A%22Basic%22%2C%22Begin%20downgrade%20to%20%7B0%7D%22%3A%22Begin%20downgrade%20to%20%7B0%7D%22%2C%22Beta%22%3A%22Beta%22%2C%22Blacklisted%20USB%20Flash%20GUID%22%3A%22Blacklisted%20USB%20Flash%20GUID%22%2C%22BLACKLISTED%22%3A%22BLACKLISTED%22%2C%22Calculating%20trial%20expiration%5Cu2026%22%3A%22Calculating%20trial%20expiration%5Cu2026%22%2C%22Callback%20redirect%20type%20not%20present%20or%20incorrect%22%3A%22Callback%20redirect%20type%20not%20present%20or%20incorrect%22%2C%22Cancel%22%3A%22Cancel%22%2C%22Cannot%20access%20your%20USB%20Flash%20boot%20device%22%3A%22Cannot%20access%20your%20USB%20Flash%20boot%20device%22%2C%22Cannot%20validate%20Unraid%20Trial%20key%22%3A%22Cannot%20validate%20Unraid%20Trial%20key%22%2C%22Check%20for%20OS%20Updates%22%3A%22Check%20for%20OS%20Updates%22%2C%22check%20for%20OS%20updates%22%3A%22check%20for%20OS%20updates%22%2C%22Check%20for%20Prereleases%22%3A%22Check%20for%20Prereleases%22%2C%22Checking%20WAN%20IPs%5Cu2026%22%3A%22Checking%20WAN%20IPs%5Cu2026%22%2C%22Checking...%22%3A%22Checking...%22%2C%22Checkout%20the%20Connect%20Documentation%22%3A%22Checkout%20the%20Connect%20Documentation%22%2C%22Click%20to%20close%20modal%22%3A%22Click%20to%20close%20modal%22%2C%22Click%20to%20Copy%20LAN%20IP%20%7B0%7D%22%3A%22Click%20to%20copy%20LAN%20IP%20%7B0%7D%22%2C%22Close%20Dropdown%22%3A%22Close%20Dropdown%22%2C%22Close%20Modal%22%3A%22Close%20Modal%22%2C%22Close%22%3A%22Close%22%2C%22Configure%20Connect%20Features%22%3A%22Configure%20Connect%20Features%22%2C%22Confirm%20and%20start%20update%22%3A%22Confirm%20and%20start%20update%22%2C%22Connected%22%3A%22Connected%22%2C%22Contact%20Support%22%3A%22Contact%20Support%22%2C%22Copied%22%3A%22Copied%22%2C%22Copy%20Key%20URL%22%3A%22Copy%20Key%20URL%22%2C%22Copy%20your%20Key%20URL%3A%20%7B0%7D%22%3A%22Copy%20your%20Key%20URL%3A%20%7B0%7D%22%2C%22Create%20Flash%20Backup%22%3A%22Create%20Flash%20Backup%22%2C%22Current%20Version%20%7B0%7D%22%3A%22Current%20Version%20%7B0%7D%22%2C%22Current%20Version%3A%20Unraid%20%7B0%7D%22%3A%22Current%20Version%3A%20Unraid%20%7B0%7D%22%2C%22Customizable%20Dashboard%20Tiles%22%3A%22Customizable%20Dashboard%20Tiles%22%2C%22day%22%3A%22%7Bn%7D%20day%20%7C%20%7Bn%7D%20days%22%2C%22Deep%20Linking%22%3A%22Deep%20Linking%22%2C%22DNS%20issue%2C%20unable%20to%20resolve%20wanip4.unraid.net%22%3A%22DNS%20issue%2C%20unable%20to%20resolve%20wanip4.unraid.net%22%2C%22Downgrade%20Unraid%20OS%20to%20%7B0%7D%22%3A%22Downgrade%20Unraid%20OS%20to%20%7B0%7D%22%2C%22Downgrade%20Unraid%20OS%22%3A%22Downgrade%20Unraid%20OS%22%2C%22Downgrades%20are%20only%20recommended%20if%20you%27re%20unable%20to%20solve%20a%20critical%20issue.%22%3A%22Downgrades%20are%20only%20recommended%20if%20you%26apos%3Bre%20unable%20to%20solve%20a%20critical%20issue.%22%2C%22Download%20the%20Diagnostics%20zip%20then%20please%20open%20a%20bug%20report%20on%20our%20forums%20with%20a%20description%20of%20the%20issue%20along%20with%20your%20diagnostics.%22%3A%22Download%20the%20Diagnostics%20zip%20then%20please%20open%20a%20bug%20report%20on%20our%20forums%20with%20a%20description%20of%20the%20issue%20along%20with%20your%20diagnostics.%22%2C%22Download%20unraid-api%20Logs%22%3A%22Download%20unraid-api%20Logs%22%2C%22Dynamic%20Remote%20Access%22%3A%22Dynamic%20Remote%20Access%22%2C%22Enhance%20your%20experience%20with%20Unraid%20Connect%22%3A%22Enhance%20your%20experience%20with%20Unraid%20Connect%22%2C%22Enhance%20your%20Unraid%20experience%20with%20Connect%22%3A%22Enhance%20your%20Unraid%20experience%20with%20Connect%22%2C%22Enhance%20your%20Unraid%20experience%22%3A%22Enhance%20your%20Unraid%20experience%22%2C%22Error%20creatiing%20a%20trial%20key.%20Please%20try%20again%20later.%22%3A%22Error%20creatiing%20a%20trial%20key.%20Please%20try%20again%20later.%22%2C%22Error%22%3A%22Error%22%2C%22Expired%20%7B0%7D%22%3A%22Expired%20%7B0%7D%22%2C%22Expired%22%3A%22Expired%22%2C%22Expires%20at%20%7B0%7D%22%3A%22Expires%20at%20%7B0%7D%22%2C%22Expires%20in%20%7B0%7D%22%3A%22Expires%20in%20%7B0%7D%22%2C%22Extend%20Trial%22%3A%22Extend%20Trial%22%2C%22Extending%20your%20free%20trial%20by%2015%20days%22%3A%22Extending%20your%20free%20trial%20by%2015%20days%22%2C%22Extension%20Installed%22%3A%22Extension%20Installed%22%2C%22Failed%20to%20%7B0%7D%20%7B1%7D%20Key%22%3A%22Failed%20to%20%7B0%7D%20%7B1%7D%20Key%22%2C%22Failed%20to%20install%20key%22%3A%22Failed%20to%20install%20key%22%2C%22Failed%20to%20update%20Connect%20account%20configuration%22%3A%22Failed%20to%20update%20Connect%20account%20configuration%22%2C%22Fix%20Error%22%3A%22Fix%20Error%22%2C%22Flash%20Backup%20is%20not%20available.%20Navigate%20to%20%7B0%7D%2FMain%2FSettings%2FFlash%20to%20try%20again%20then%20come%20back%20to%20this%20page.%22%3A%22Flash%20Backup%20is%20not%20available.%20Navigate%20to%20%7B0%7D%2FMain%2FSettings%2FFlash%20to%20try%20again%20then%20come%20back%20to%20this%20page.%22%2C%22Flash%20GUID%20Error%22%3A%22Flash%20GUID%20Error%22%2C%22Flash%20GUID%20required%20to%20check%20replacement%20status%22%3A%22Flash%20GUID%20required%20to%20check%20replacement%20status%22%2C%22Flash%20GUID%22%3A%22Flash%20GUID%22%2C%22Flash%20Product%22%3A%22Flash%20Product%22%2C%22Flash%20Vendor%22%3A%22Flash%20Vendor%22%2C%22Get%20an%20overview%20of%20your%20server%27s%20state%2C%20storage%20space%2C%20apps%20and%20VMs%20status%2C%20and%20more.%22%3A%22Get%20an%20overview%20of%20your%20server%26apos%3Bs%20state%2C%20storage%20space%2C%20apps%20and%20VMs%20status%2C%20and%20more.%22%2C%22Get%20Started%22%3A%22Get%20Started%22%2C%22Go%20to%20Connect%20plugin%20settings%22%3A%22Go%20to%20Connect%20plugin%20settings%22%2C%22Go%20to%20Connect%22%3A%22Go%20to%20Connect%22%2C%22Go%20to%20Management%20Access%20Now%22%3A%22Go%20to%20Management%20Access%20Now%22%2C%22Go%20to%20Tools%20%3E%20Management%20Access%20to%20activate%20the%20Flash%20Backup%20feature%20and%20ensure%20your%20backup%20is%20up-to-date.%22%3A%22Go%20to%20Tools%20%3E%20Management%20Access%20to%20activate%20the%20Flash%20Backup%20feature%20and%20ensure%20your%20backup%20is%20up-to-date.%22%2C%22Go%20to%20Tools%20%3E%20Management%20Access%20to%20ensure%20your%20backup%20is%20up-to-date.%22%3A%22Go%20to%20Tools%20%3E%20Management%20Access%20to%20ensure%20your%20backup%20is%20up-to-date.%22%2C%22Go%20to%20Tools%20%3E%20Registration%20to%20fix%22%3A%22Go%20to%20Tools%20%3E%20Registration%20to%20fix%22%2C%22Go%20to%20Tools%20%3E%20Update%22%3A%22Go%20to%20Tools%20%3E%20Update%22%2C%22hour%22%3A%22%7Bn%7D%20hour%20%7C%20%7Bn%7D%20hours%22%2C%22I%20have%20made%20a%20Flash%20Backup%22%3A%22I%20have%20made%20a%20Flash%20Backup%22%2C%22If%20you%20are%20asked%20to%20supply%20logs%2C%20please%20open%20a%20support%20request%20on%20our%20Contact%20Page%20and%20reply%20to%20the%20email%20message%20you%20receive%20with%20your%20logs%20attached.%22%3A%22If%20you%20are%20asked%20to%20supply%20logs%2C%20please%20open%20a%20support%20request%20on%20our%20Contact%20Page%20and%20reply%20to%20the%20email%20message%20you%20receive%20with%20your%20logs%20attached.%22%2C%22Ignore%20this%20message%20if%20you%20are%20currently%20connected%20via%20Remote%20Access%20or%20VPN.%22%3A%22Ignore%20this%20message%20if%20you%20are%20currently%20connected%20via%20Remote%20Access%20or%20VPN.%22%2C%22In%20the%20rare%20event%20you%20need%20to%20downgrade%20we%20ask%20that%20you%20please%20provide%20us%20with%20Diagnostics%20so%20we%20can%20investigate%20your%20issue.%22%3A%22In%20the%20rare%20event%20you%20need%20to%20downgrade%20we%20ask%20that%20you%20please%20provide%20us%20with%20Diagnostics%20so%20we%20can%20investigate%20your%20issue.%22%2C%22Install%20Connect%22%3A%22Install%20Connect%22%2C%22Install%20Recovered%22%3A%22Install%20Recovered%22%2C%22Install%20Replaced%22%3A%22Install%20Replaced%22%2C%22Install%22%3A%22Install%22%2C%22Installed%22%3A%22Installed%22%2C%22Installing%20Extended%20Trial%22%3A%22Installing%20Extended%20Trial%22%2C%22Installing%20Extended%22%3A%22Installing%20Extended%22%2C%22Installing%20Recovered%22%3A%22Installing%20Recovered%22%2C%22Installing%20Replaced%22%3A%22Installing%20Replaced%22%2C%22Installing%22%3A%22Installing%22%2C%22Introducing%20Unraid%20Connect%22%3A%22Introducing%20Unraid%20Connect%22%2C%22Invalid%20API%20Key%20Format%22%3A%22Invalid%20API%20Key%20Format%22%2C%22Invalid%20API%20Key%22%3A%22Invalid%20API%20Key%22%2C%22Invalid%20installation%22%3A%22Invalid%20installation%22%2C%22Keyfile%20required%20to%20check%20replacement%20status%22%3A%22Keyfile%20required%20to%20check%20replacement%20status%22%2C%22LAN%20IP%20%7B0%7D%22%3A%22LAN%20IP%20%7B0%7D%22%2C%22LAN%20IP%20Copied%22%3A%22LAN%20IP%20Copied%22%2C%22LAN%20IP%22%3A%22LAN%20IP%22%2C%22Last%20checked%3A%20%7B0%7D%22%3A%22Last%20checked%3A%20%7B0%7D%22%2C%22Learn%20more%20about%20the%20error%22%3A%22Learn%20more%20about%20the%20error%22%2C%22Learn%20more%20and%20fix%22%3A%22Learn%20more%20and%20fix%22%2C%22Learn%20More%22%3A%22Learn%20More%22%2C%22Learn%20more%22%3A%22Learn%20more%22%2C%22Let%27s%20Unleash%20your%20Hardware%21%22%3A%22Let%26apos%3Bs%20Unleash%20your%20Hardware%21%22%2C%22License%20key%20actions%22%3A%22License%20key%20actions%22%2C%22License%20key%20type%22%3A%22License%20key%20type%22%2C%22License%20Management%22%3A%22License%20Management%22%2C%22Loading%22%3A%22Loading%22%2C%22Manage%20Unraid.net%20Account%20in%20new%20tab%22%3A%22Manage%20Unraid.net%20Account%20in%20new%20tab%22%2C%22Manage%20Unraid.net%20Account%22%3A%22Manage%20Unraid.net%20Account%22%2C%22Manage%20your%20license%20keys%20at%20any%20time%20via%20the%20My%20Keys%20section.%22%3A%22Manage%20your%20license%20keys%20at%20any%20time%20via%20the%20My%20Keys%20section.%22%2C%22Manage%20Your%20Server%20Within%20Connect%22%3A%22Manage%20Your%20Server%20Within%20Connect%22%2C%22minute%22%3A%22%7Bn%7D%20minute%20%7C%20%7Bn%7D%20minutes%22%2C%22Missing%20key%20file%22%3A%22Missing%20key%20file%22%2C%22month%22%3A%22%7Bn%7D%20month%20%7C%20%7Bn%7D%20months%22%2C%22Multiple%20License%20Keys%20Present%22%3A%22Multiple%20License%20Keys%20Present%22%2C%22Never%20ever%20be%20left%20without%20a%20backup%20of%20your%20config.%20If%20you%20need%20to%20change%20flash%20drives%2C%20generate%20a%20backup%20from%20Connect%20and%20be%20up%20and%20running%20in%20minutes.%22%3A%22Never%20ever%20be%20left%20without%20a%20backup%20of%20your%20config.%20If%20you%20need%20to%20change%20flash%20drives%2C%20generate%20a%20backup%20from%20Connect%20and%20be%20up%20and%20running%20in%20minutes.%22%2C%22New%20Version%3A%20%7B0%7D%22%3A%22New%20Version%3A%20%7B0%7D%22%2C%22No%20downgrade%20available%22%3A%22No%20downgrade%20available%22%2C%22No%20Flash%22%3A%22No%20Flash%22%2C%22No%20Keyfile%22%3A%22No%20Keyfile%22%2C%22No%20thanks%22%3A%22No%20thanks%22%2C%22No%20USB%20flash%20configuration%20data%22%3A%22No%20USB%20flash%20configuration%20data%22%2C%22On%20January%201st%2C%202023%20SSL%20certificates%20for%20unraid.net%20were%20deprecated.%20You%20MUST%20provision%20a%20new%20SSL%20certificate%20to%20use%20our%20new%20myunraid.net%20domain.%20You%20can%20do%20this%20on%20the%20Settings%20%3E%20Management%20Access%20page.%22%3A%22On%20January%201st%2C%202023%20SSL%20certificates%20for%20unraid.net%20were%20deprecated.%20You%20MUST%20provision%20a%20new%20SSL%20certificate%20to%20use%20our%20new%20myunraid.net%20domain.%20You%20can%20do%20this%20on%20the%20Settings%20%3E%20Management%20Access%20page.%22%2C%22Online%20Flash%20Backup%22%3A%22Online%20Flash%20Backup%22%2C%22Open%20a%20bug%20report%22%3A%22Open%20a%20bug%20report%22%2C%22Open%20Dropdown%22%3A%22Open%20Dropdown%22%2C%22Opens%20Connect%20in%20new%20tab%22%3A%22Opens%20Connect%20in%20new%20tab%22%2C%22Original%20release%20date%20%7B0%7D%22%3A%22Original%20release%20date%20%7B0%7D%22%2C%22Performing%20actions%22%3A%22Performing%20actions%22%2C%22Please%20confirm%20the%20update%20details%20below%22%3A%22Please%20confirm%20the%20update%20details%20below%22%2C%22Please%20fix%20any%20errors%20and%20try%20again.%22%3A%22Please%20fix%20any%20errors%20and%20try%20again.%22%2C%22Please%20keep%20this%20window%20open%20while%20we%20perform%20some%20actions%22%3A%22Please%20keep%20this%20window%20open%20while%20we%20perform%20some%20actions%22%2C%22Please%20keep%20this%20window%20open%22%3A%22Please%20keep%20this%20window%20open%22%2C%22Please%20sign%20out%20then%20sign%20back%20in%20to%20refresh%20your%20API%20key.%22%3A%22Please%20sign%20out%20then%20sign%20back%20in%20to%20refresh%20your%20API%20key.%22%2C%22Please%20wait%20while%20the%20page%20reloads%20to%20install%20your%20trial%20key%22%3A%22Please%20wait%20while%20the%20page%20reloads%20to%20install%20your%20trial%20key%22%2C%22Plus%20more%20on%20the%20way%22%3A%22Plus%20more%20on%20the%20way%22%2C%22Plus%22%3A%22Plus%22%2C%22Pro%22%3A%22Pro%22%2C%22Purchase%20Key%22%3A%22Purchase%20Key%22%2C%22Purchase%22%3A%22Purchase%22%2C%22Ready%20to%20Install%20Key%22%3A%22Ready%20to%20Install%20Key%22%2C%22Ready%20to%20update%20Connect%20account%20configuration%22%3A%22Ready%20to%20update%20Connect%20account%20configuration%22%2C%22Real-time%20Monitoring%22%3A%22Real-time%20Monitoring%22%2C%22Reboot%20Now%20to%20Downgrade%20to%20%7B0%7D%22%3A%22Reboot%20Now%20to%20Downgrade%20to%20%7B0%7D%22%2C%22Reboot%20Now%20to%20Downgrade%22%3A%22Reboot%20Now%20to%20Downgrade%22%2C%22Reboot%20Now%20to%20Update%20to%20%7B0%7D%22%3A%22Reboot%20Now%20to%20Update%20to%20%7B0%7D%22%2C%22Reboot%20Now%20to%20Update%22%3A%22Reboot%20Now%20to%20Update%22%2C%22Reboot%20Required%20for%20Downgrade%20to%20%7B0%7D%22%3A%22Reboot%20Required%20for%20Downgrade%20to%20%7B0%7D%22%2C%22Reboot%20Required%20for%20Downgrade%22%3A%22Reboot%20Required%20for%20Downgrade%22%2C%22Reboot%20Required%20for%20Update%20to%20%7B0%7D%22%3A%22Reboot%20Required%20for%20Update%20to%20%7B0%7D%22%2C%22Reboot%20Required%20for%20Update%22%3A%22Reboot%20Required%20for%20Update%22%2C%22Rebooting%20will%20likely%20solve%20this.%22%3A%22Rebooting%20will%20likely%20solve%20this.%22%2C%22Receive%20the%20latest%20and%20greatest%20for%20Unraid%20OS.%20Whether%20it%20new%20features%2C%20security%20patches%2C%20or%20bug%20fixes%20%5Cu2013%20keeping%20your%20server%20up-to-date%20ensures%20the%20best%20experience%20that%20Unraid%20has%20to%20offer.%22%3A%22Receive%20the%20latest%20and%20greatest%20for%20Unraid%20OS.%20Whether%20it%20new%20features%2C%20security%20patches%2C%20or%20bug%20fixes%20%5Cu2013%20keeping%20your%20server%20up-to-date%20ensures%20the%20best%20experience%20that%20Unraid%20has%20to%20offer.%22%2C%22Recover%20Key%22%3A%22Recover%20Key%22%2C%22Recovered%22%3A%22Recovered%22%2C%22Redeem%20Activation%20Code%22%3A%22Redeem%20Activation%20Code%22%2C%22Registered%20on%22%3A%22Registered%20on%22%2C%22Registered%20to%22%3A%22Registered%20to%22%2C%22Registration%20key%20%2F%20USB%20Flash%20GUID%20mismatch%22%3A%22Registration%20key%20%2F%20USB%20Flash%20GUID%20mismatch%22%2C%22Reload%22%3A%22Reload%22%2C%22Remark%3A%20Unraid%27s%20WAN%20IPv4%20%7B0%7D%20does%20not%20match%20your%20client%27s%20WAN%20IPv4%20%7B1%7D.%22%3A%22Remark%3A%20Unraid%26apos%3Bs%20WAN%20IPv4%20%7B0%7D%20does%20not%20match%20your%20client%26apos%3Bs%20WAN%20IPv4%20%7B1%7D.%22%2C%22Remark%3A%20your%20WAN%20IPv4%20is%20%7B0%7D%22%3A%22Remark%3A%20your%20WAN%20IPv4%20is%20%7B0%7D%22%2C%22Replace%20Key%22%3A%22Replace%20Key%22%2C%22Replaced%22%3A%22Replaced%22%2C%22Restarting%20unraid-api%5Cu2026%22%3A%22Restarting%20unraid-api%5Cu2026%22%2C%22second%22%3A%22%7Bn%7D%20second%20%7C%20%7Bn%7D%20seconds%22%2C%22Server%20Up%20Since%20%7B0%7D%22%3A%22Server%20Up%20Since%20%7B0%7D%22%2C%22Servers%20equipped%20with%20a%20myunraid.net%20certificate%20can%20be%20managed%20directly%20from%20within%20the%20Connect%20web%20UI.%20Manage%20multiple%20servers%20from%20your%20phone%2C%20tablet%2C%20laptop%2C%20or%20PC%20in%20the%20same%20browser%20window.%22%3A%22Servers%20equipped%20with%20a%20myunraid.net%20certificate%20can%20be%20managed%20directly%20from%20within%20the%20Connect%20web%20UI.%20Manage%20multiple%20servers%20from%20your%20phone%2C%20tablet%2C%20laptop%2C%20or%20PC%20in%20the%20same%20browser%20window.%22%2C%22Set%20custom%20server%20tiles%20how%20you%20like%20and%20automatically%20display%20your%20server%27s%20banner%20image%20on%20your%20Connect%20Dashboard.%22%3A%22Set%20custom%20server%20tiles%20how%20you%20like%20and%20automatically%20display%20your%20server%26apos%3Bs%20banner%20image%20on%20your%20Connect%20Dashboard.%22%2C%22Settings%22%3A%22Settings%22%2C%22Sign%20In%20Failed%22%3A%22Sign%20In%20Failed%22%2C%22Sign%20In%20requires%20the%20local%20unraid-api%20to%20be%20running%22%3A%22Sign%20In%20requires%20the%20local%20unraid-api%20to%20be%20running%22%2C%22Sign%20In%20to%20utilize%20Unraid%20Connect%22%3A%22Sign%20In%20to%20utilize%20Unraid%20Connect%22%2C%22Sign%20In%20to%20your%20Unraid.net%20account%20to%20get%20started%22%3A%22Sign%20In%20to%20your%20Unraid.net%20account%20to%20get%20started%22%2C%22Sign%20In%20with%20Unraid.net%20Account%22%3A%22Sign%20In%20with%20Unraid.net%20Account%22%2C%22Sign%20Out%20Failed%22%3A%22Sign%20Out%20Failed%22%2C%22Sign%20Out%20of%20Unraid.net%22%3A%22Sign%20Out%20of%20Unraid.net%22%2C%22Sign%20Out%20requires%20the%20local%20unraid-api%20to%20be%20running%22%3A%22Sign%20Out%20requires%20the%20local%20unraid-api%20to%20be%20running%22%2C%22Signing%20in%20%7B0%7D%5Cu2026%22%3A%22Signing%20in%20%7B0%7D%5Cu2026%22%2C%22Signing%20In%22%3A%22Signing%20In%22%2C%22Signing%20out%20%7B0%7D%5Cu2026%22%3A%22Signing%20out%20%7B0%7D%5Cu2026%22%2C%22Signing%20Out%22%3A%22Signing%20Out%22%2C%22Something%20went%20wrong%22%3A%22Something%20went%20wrong%22%2C%22SSL%20certificates%20for%20unraid.net%20deprecated%22%3A%22SSL%20certificates%20for%20unraid.net%20deprecated%22%2C%22Stale%20Server%22%3A%22Stale%20Server%22%2C%22Stale%22%3A%22Stale%22%2C%22Start%20Free%2030%20Day%20Trial%22%3A%22Start%20Free%2030%20Day%20Trial%22%2C%22Starting%20your%20free%2030%20day%20trial%22%3A%22Starting%20your%20free%2030%20day%20trial%22%2C%22Success%21%22%3A%22Success%21%22%2C%22Thank%20you%20for%20choosing%20Unraid%20OS%21%22%3A%22Thank%20you%20for%20choosing%20Unraid%20OS%21%22%2C%22Thank%20you%20for%20installing%20Connect%21%22%3A%22Thank%20you%20for%20installing%20Connect%21%22%2C%22Thank%20you%20for%20purchasing%20an%20Unraid%20%7B0%7D%20Key%21%22%3A%22Thank%20you%20for%20purchasing%20an%20Unraid%20%7B0%7D%20Key%21%22%2C%22Thank%20you%20for%20upgrading%20to%20an%20Unraid%20%7B0%7D%20Key%21%22%3A%22Thank%20you%20for%20upgrading%20to%20an%20Unraid%20%7B0%7D%20Key%21%22%2C%22The%20Connect%20dashboard%20links%20to%20relevant%20sections%20of%20the%20webgui%2C%20allowing%20quick%20access%20to%20those%20settings%20and%20server%20sections.%22%3A%22The%20Connect%20dashboard%20links%20to%20relevant%20sections%20of%20the%20webgui%2C%20allowing%20quick%20access%20to%20those%20settings%20and%20server%20sections.%22%2C%22The%20logs%20may%20contain%20sensitive%20information%20so%20do%20not%20post%20them%20publicly.%22%3A%22The%20logs%20may%20contain%20sensitive%20information%20so%20do%20not%20post%20them%20publicly.%22%2C%22The%20primary%20method%20of%20support%20for%20Unraid%20Connect%20is%20through%20our%20forums%20and%20Discord.%22%3A%22The%20primary%20method%20of%20support%20for%20Unraid%20Connect%20is%20through%20our%20forums%20and%20Discord.%22%2C%22Then%20go%20to%20Tools%20%3E%20Registration%20to%20manually%20install%20it%22%3A%22Then%20go%20to%20Tools%20%3E%20Registration%20to%20manually%20install%20it%22%2C%22This%20may%20indicate%20a%20complex%20network%20that%20will%20not%20work%20with%20this%20Remote%20Access%20solution.%22%3A%22This%20may%20indicate%20a%20complex%20network%20that%20will%20not%20work%20with%20this%20Remote%20Access%20solution.%22%2C%22This%20update%20will%20require%20a%20reboot%22%3A%22This%20update%20will%20require%20a%20reboot%22%2C%22Toggle%20on%2Foff%20server%20accessibility%20with%20dynamic%20remote%20access.%20Automatically%20turn%20on%20UPnP%20and%20open%20a%20random%20WAN%20port%20on%20your%20router%20at%20the%20click%20of%20a%20button%20and%20close%20off%20access%20in%20seconds.%22%3A%22Toggle%20on%2Foff%20server%20accessibility%20with%20dynamic%20remote%20access.%20Automatically%20turn%20on%20UPnP%20and%20open%20a%20random%20WAN%20port%20on%20your%20router%20at%20the%20click%20of%20a%20button%20and%20close%20off%20access%20in%20seconds.%22%2C%22Too%20Many%20Devices%22%3A%22Too%20Many%20Devices%22%2C%22Transfer%20License%20to%20New%20Flash%22%3A%22Transfer%20License%20to%20New%20Flash%22%2C%22Trial%20Expired%2C%20see%20options%20below%22%3A%22Trial%20Expired%2C%20see%20options%20below%22%2C%22Trial%20Expired%22%3A%22Trial%20Expired%22%2C%22Trial%20Key%20Created%22%3A%22Trial%20Key%20Created%22%2C%22Trial%20Key%20Creation%20Failed%22%3A%22Trial%20Key%20Creation%20Failed%22%2C%22Trial%20Key%20Expired%20%7B0%7D%22%3A%22Trial%20Key%20Expired%20%7B0%7D%22%2C%22Trial%20Key%20Expired%20at%20%7B0%7D%22%3A%22Trial%20Key%20Expired%20at%20%7B0%7D%22%2C%22Trial%20Key%20Expires%20at%20%7B0%7D%22%3A%22Trial%20Key%20Expires%20at%20%7B0%7D%22%2C%22Trial%20Key%20Expires%20in%20%7B0%7D%22%3A%22Trial%20Key%20Expires%20in%20%7B0%7D%22%2C%22Trial%20Requires%20Internet%20Connection%22%3A%22Trial%20Requires%20Internet%20Connection%22%2C%22Trial%22%3A%22Trial%22%2C%22Unable%20to%20check%20for%20OS%20updates%22%3A%22Unable%20to%20check%20for%20OS%20updates%22%2C%22Unable%20to%20fetch%20client%20WAN%20IPv4%22%3A%22Unable%20to%20fetch%20client%20WAN%20IPv4%22%2C%22Unable%20to%20open%20release%20notes%22%3A%22Unable%20to%20open%20release%20notes%22%2C%22Unknown%20error%22%3A%22Unknown%20error%22%2C%22unlimited%22%3A%22unlimited%22%2C%22Unraid%20%7B0%7D%20Available%22%3A%22Unraid%20%7B0%7D%20Available%22%2C%22Unraid%20%7B0%7D%20Update%20Available%22%3A%22Unraid%20%7B0%7D%20Update%20Available%22%2C%22Unraid%20%7B0%7D%22%3A%22Unraid%20%7B0%7D%22%2C%22Unraid%20Connect%20Error%22%3A%22Unraid%20Connect%20Error%22%2C%22Unraid%20Connect%20Forums%22%3A%22Unraid%20Connect%20Forums%22%2C%22Unraid%20Connect%20Install%20Failed%22%3A%22Unraid%20Connect%20Install%20Failed%22%2C%22Unraid%20Contact%20Page%22%3A%22Unraid%20Contact%20Page%22%2C%22Unraid%20Discord%22%3A%22Unraid%20Discord%22%2C%22Unraid%20logo%20animating%20with%20a%20wave%20like%20effect%22%3A%22Unraid%20logo%20animating%20with%20a%20wave%20like%20effect%22%2C%22Unraid%20OS%20%7B0%7D%20Released%22%3A%22Unraid%20OS%20%7B0%7D%20Released%22%2C%22Unraid%20OS%20%7B0%7D%20Update%20Available%22%3A%22Unraid%20OS%20%7B0%7D%20Update%20Available%22%2C%22Unraid%20OS%20Update%20Available%22%3A%22Unraid%20OS%20Update%20Available%22%2C%22unraid-api%20is%20offline%22%3A%22unraid-api%20is%20offline%22%2C%22Up-to-date%22%3A%22Up-to-date%22%2C%22Update%20Available%22%3A%22Update%20Available%22%2C%22Update%20Unraid%20OS%20confirmation%20required%22%3A%22Update%20Unraid%20OS%20confirmation%20required%22%2C%22Update%20Unraid%20OS%22%3A%22Update%20Unraid%20OS%22%2C%22Updating%203rd%20party%20drivers%22%3A%22Updating%203rd%20party%20drivers%22%2C%22Upgrade%20Key%22%3A%22Upgrade%20Key%22%2C%22Upgrade%22%3A%22Upgrade%22%2C%22Uptime%20%7B0%7D%22%3A%22Uptime%20%7B0%7D%22%2C%22USB%20Flash%20device%20error%22%3A%22USB%20Flash%20device%20error%22%2C%22USB%20Flash%20has%20no%20serial%20number%22%3A%22USB%20Flash%20has%20no%20serial%20number%22%2C%22Version%20available%20for%20restore%20%7B0%7D%22%3A%22Version%20available%20for%20restore%20%7B0%7D%22%2C%22Version%3A%20%7B0%7D%22%3A%22Version%3A%20%7B0%7D%22%2C%22View%20Available%20Updates%22%3A%22View%20Available%20Updates%22%2C%22View%20Changelog%20%26%20Update%22%3A%22View%20Changelog%20%26%20Update%22%2C%22View%20Changelog%20for%20%7B0%7D%22%3A%22View%20Changelog%20for%20%7B0%7D%22%2C%22View%20Changelog%22%3A%22View%20Changelog%22%2C%22View%20release%20notes%22%3A%22View%20release%20notes%22%2C%22We%20recommend%20backing%20up%20your%20USB%20Flash%20Boot%20Device%20before%20starting%20the%20update.%22%3A%22We%20recommend%20backing%20up%20your%20USB%20Flash%20Boot%20Device%20before%20starting%20the%20update.%22%2C%22year%22%3A%22%7Bn%7D%20year%20%7C%20%7Bn%7D%20years%22%2C%22You%20can%20also%20manually%20create%20a%20new%20backup%20by%20clicking%20the%20Create%20Flash%20Backup%20button.%22%3A%22You%20can%20also%20manually%20create%20a%20new%20backup%20by%20clicking%20the%20Create%20Flash%20Backup%20button.%22%2C%22You%20can%20manually%20create%20a%20backup%20by%20clicking%20the%20Create%20Flash%20Backup%20button.%22%3A%22You%20can%20manually%20create%20a%20backup%20by%20clicking%20the%20Create%20Flash%20Backup%20button.%22%2C%22You%20have%20already%20activated%20the%20Flash%20Backup%20feature%20via%20the%20Unraid%20Connect%20plugin.%22%3A%22You%20have%20already%20activated%20the%20Flash%20Backup%20feature%20via%20the%20Unraid%20Connect%20plugin.%22%2C%22You%20have%20exceeded%20the%20number%20of%20devices%20allowed%20for%20your%20license.%20Please%20remove%20a%20device%20before%20adding%20another.%22%3A%22You%20have%20exceeded%20the%20number%20of%20devices%20allowed%20for%20your%20license.%20Please%20remove%20a%20device%20before%20adding%20another.%22%2C%22You%20have%20not%20activated%20the%20Flash%20Backup%20feature%20via%20the%20Unraid%20Connect%20plugin.%22%3A%22You%20have%20not%20activated%20the%20Flash%20Backup%20feature%20via%20the%20Unraid%20Connect%20plugin.%22%2C%22You%20may%20still%20update%20to%20releases%20dated%20prior%20to%20your%20update%20expiration%20date.%22%3A%22You%20may%20still%20update%20to%20releases%20dated%20prior%20to%20your%20update%20expiration%20date.%22%2C%22You%27re%20one%20step%20closer%20to%20enhancing%20your%20Unraid%20experience%22%3A%22You%26apos%3Bre%20one%20step%20closer%20to%20enhancing%20your%20Unraid%20experience%22%2C%22Your%20%7B0%7D%20Key%20has%20been%20replaced%21%22%3A%22Your%20%7B0%7D%20Key%20has%20been%20replaced%21%22%2C%22Your%20free%20Trial%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key%22%3A%22Your%20free%20Trial%20key%20provides%20all%20the%20functionality%20of%20an%20Unleashed%20Registration%20key%22%2C%22Your%20Trial%20has%20expired%22%3A%22Your%20Trial%20has%20expired%22%2C%22Your%20Trial%20key%20has%20been%20extended%21%22%3A%22Your%20Trial%20key%20has%20been%20extended%21%22%7D%7D';
+/**
+ * So we're not needing to modify DefaultLayout with an additional include, we'll add the Modals web component to the bottom of the body.
+ */
+const i18nHostWebComponent = 'unraid-i18n-host';
+const modalsWebComponent = 'unraid-modals';
+if (!document.getElementsByTagName(modalsWebComponent).length) {
+    const $body = document.getElementsByTagName('body')[0];
+    const $i18nHost = document.createElement(i18nHostWebComponent);
+    const $modals = document.createElement(modalsWebComponent);
+    $body.appendChild($i18nHost);
+    $i18nHost.appendChild($modals);
+}
+</script>
+
+<unraid-i18n-host>
+    <unraid-user-profile server="{&quot;apiKey&quot;:&quot;&quot;,&quot;apiVersion&quot;:&quot;&quot;,&quot;avatar&quot;:&quot;&quot;,&quot;caseModel&quot;:&quot;mid-tower&quot;,&quot;config&quot;:{&quot;valid&quot;:true,&quot;error&quot;:null},&quot;connectPluginInstalled&quot;:&quot;&quot;,&quot;connectPluginVersion&quot;:null,&quot;csrf&quot;:&quot;63F1FD87F6F1C333&quot;,&quot;dateTimeFormat&quot;:{&quot;date&quot;:&quot;%c&quot;,&quot;time&quot;:&quot;%R&quot;},&quot;description&quot;:&quot;Media server&quot;,&quot;deviceCount&quot;:&quot;4&quot;,&quot;email&quot;:&quot;&quot;,&quot;expireTime&quot;:0,&quot;extraOrigins&quot;:[],&quot;flashProduct&quot;:&quot;DataTraveler_3.0&quot;,&quot;flashVendor&quot;:&quot;Kingston&quot;,&quot;flashBackupActivated&quot;:&quot;&quot;,&quot;guid&quot;:&quot;0951-1666-DBDE-E751087604C8&quot;,&quot;hasRemoteApikey&quot;:false,&quot;internalPort&quot;:&quot;80&quot;,&quot;keyfile&quot;:&quot;s764LKmBOI8tKQSQXvd8LYCgY6kHMK2vZT9yzDYWXp9BxOdZoH33m5XdgMVpJ1cv1x1gOq2sXAahyEUcHxKSJTdHbNLSWbaghzAKUHTc1seUccEfZEmo8HFhHnj655-I9MBIkBxbPpxCxuLh-MmrpcTiNjCJcusDsuDCRuP4WQ-zAAlJYfxkIMDRrLn2QG3_qyVllJmoaQK1rTnaM06i-_p11InVjpXYU6-4GazFzl2R3Y5sNTyjOL4E3zjidlvVZZ1OsrDVyD5QzvfYrCDgs7DX1KzAq5RI5na0zdgoN2x6r0yeeGGZMZwrwT18MTqfrmXkb-_0FAKmHoxJU6Aoig&quot;,&quot;lanIp&quot;:&quot;10.0.0.63&quot;,&quot;locale&quot;:&quot;en_US&quot;,&quot;model&quot;:&quot;Custom&quot;,&quot;name&quot;:&quot;UNRAIDVM&quot;,&quot;osVersion&quot;:&quot;6.12.11&quot;,&quot;osVersionBranch&quot;:&quot;stable&quot;,&quot;protocol&quot;:&quot;http&quot;,&quot;rebootType&quot;:&quot;&quot;,&quot;regDevs&quot;:0,&quot;regGen&quot;:0,&quot;regGuid&quot;:&quot;0951-1666-DBDE-E751087604C8&quot;,&quot;regTo&quot;:&quot;Norbert Tak\u00e1cs&quot;,&quot;regTm&quot;:1690995084000,&quot;regTy&quot;:&quot;Basic&quot;,&quot;regExp&quot;:&quot;&quot;,&quot;registered&quot;:false,&quot;registeredTime&quot;:&quot;&quot;,&quot;site&quot;:&quot;http:\/\/10.0.0.63&quot;,&quot;state&quot;:&quot;BASIC&quot;,&quot;theme&quot;:{&quot;banner&quot;:false,&quot;bannerGradient&quot;:true,&quot;bgColor&quot;:&quot;&quot;,&quot;descriptionShow&quot;:true,&quot;metaColor&quot;:&quot;&quot;,&quot;name&quot;:&quot;white&quot;,&quot;textColor&quot;:&quot;&quot;},&quot;ts&quot;:1722963138,&quot;uptime&quot;:1722962109000,&quot;username&quot;:&quot;&quot;,&quot;wanFQDN&quot;:&quot;&quot;}"></unraid-user-profile>
+</unraid-i18n-host>
+  </div>
+  <a href="#" class="back_to_top" title="Back To Top"><i class="fa fa-arrow-circle-up"></i></a>
+<div id='menu'><div class='nav-tile'><div class='nav-item active'><a href="/Dashboard" onclick="initab('/Dashboard')">Dashboard</a></div><div class='nav-item'><a href="/Main" onclick="initab('/Main')">Main</a></div><div class='nav-item'><a href="/Shares" onclick="initab('/Shares')">Shares</a></div><div class='nav-item'><a href="/Users" onclick="initab('/Users')">Users</a></div><div class='nav-item'><a href="/Settings" onclick="initab('/Settings')">Settings</a></div><div class='nav-item'><a href="/Plugins" onclick="initab('/Plugins')">Plugins</a></div><div class='nav-item'><a href="/Apps" onclick="initab('/Apps')">Apps</a></div><div class='nav-item'><a href="/Stats" onclick="initab('/Stats')">Stats</a></div><div class='nav-item'><a href="/Tools" onclick="initab('/Tools')">Tools</a></div></div><div class='nav-tile right'><div class='nav-item LockButton util'><a 'href='#' class='hand' onclick='LockButton();return false;' title="Unlock sortable items"><b class='icon-u-lock system green-text'></b><span>Unlock sortable items</span></a></div><div class='nav-item LanguageButton util'><a href='#' onclick='LanguageButton();return false;' title="Switch Language"><b class='icon-u-switch system'></b><span>Switch Language</span></a></div><div class='nav-item LogoutButton util'><a href='#' onclick='LogoutButton();return false;' title="Logout"><b class='icon-u-logout system'></b><span>Logout</span></a></div><div class='nav-item TerminalButton util'><a href='#' onclick='TerminalButton();return false;' title="Terminal"><b class='icon-u-terminal system'></b><span>Terminal</span></a></div><div class='nav-item FeedbackButton util'><a href='#' onclick='FeedbackButton();return false;' title="Feedback"><b class='icon-u-chat system'></b><span>Feedback</span></a></div><div class='nav-item InfoButton util'><a href='#' onclick='InfoButton();return false;' title="Info"><b class='icon-u-display system'></b><span>Info</span></a></div><div class='nav-item LogButton util'><a href='#' onclick='LogButton();return false;' title="Log"><b class='icon-u-log system'></b><span>Log</span></a></div><div class='nav-item HelpButton util'><a href='#' onclick='HelpButton();return false;' title="Help"><b class='icon-u-help system'></b><span>Help</span></a></div><div class='nav-user'></div><div class='nav-user'></div><div class='nav-user show'><a id='board' href='#'><b id='bell' class='icon-u-bell system'></b></a></div></div></div>
+<!--
+##########################
+webGui/LanguageButton.page
+##########################
+-->
+<script>
+// hide switch button when no other language packs
+$(function(){$('.nav-item.LanguageButton').hide();});
+
+function LanguageButton() {
+  var locale = '';
+  if (locale) {
+    switchLanguage('');
+    $.cookie('locale',locale);
+  } else {
+    switchLanguage($.cookie('locale'));
+    $.removeCookie('locale');
+  }
+}
+
+function switchLanguage(lang) {
+  $.post('/webGui/include/LanguageReset.php',{lang:lang},function(){location.reload();});
+}
+</script>
+<!--
+########################
+webGui/LogoutButton.page
+########################
+-->
+<script>
+function LogoutButton() {
+  var id = window.setTimeout(null,0);
+  while (id--) window.clearTimeout(id);
+  window.location.href = '/logout';
+}
+</script>
+
+<!--
+##########################
+webGui/TerminalButton.page
+##########################
+-->
+<script>
+function TerminalButton() {
+  var d = new Date();
+  openTerminal('ttyd','Web Terminal '+d.getTime(),'');
+}
+</script>
+
+<!--
+##########################
+webGui/FeedbackButton.page
+##########################
+-->
+<script>
+function FeedbackButton() {
+  openChanges("feedback", "Feedback", "feedback");
+}
+</script>
+<!--
+######################
+webGui/InfoButton.page
+######################
+-->
+<script>
+function InfoButton() {
+  openChanges("system_information", "System Information", "sysinfo");
+}
+</script>
+<!--
+#####################
+webGui/LogButton.page
+#####################
+-->
+<script>
+function LogButton() {
+  openTerminal('syslog','syslog','');
+}
+</script>
+
+<!--
+######################
+webGui/HelpButton.page
+######################
+-->
+<script>
+function HelpButton() {
+  if ($('.nav-item.HelpButton').toggleClass('active').hasClass('active')) {
+    $('.inline_help').show('slow');
+    $.cookie('help','help');
+  } else {
+    $('.inline_help').hide('slow');
+    $.removeCookie('help');
+  }
+}
+</script>
+<!--
+##############################################
+plugins/community.applications/CA_notices.page
+##############################################
+-->
+
+
+
+<!--
+#################################################
+plugins/dynamix.plugin.manager/PluginHelpers.page
+#################################################
+-->
+<style>
+/* Additional CSS for when user supplies element */
+.ca_element_notice{padding-right:20px;width:100%;height:40px;line-height:40px;color:#e68a00;background:#feefb3;border-bottom:#e68a00 1px solid;text-align:center;font-size:1.4rem;z-index:900;}
+a.ca_PluginUpdateInstall{cursor:pointer;}
+span.ca_PluginUpdateDismiss{float:right;margin-right:20px;cursor:pointer;}
+span.bannerInfo {cursor:pointer;text-decoration:none;margin:0 12px 0 6px;}
+span.bannerInfo::before {content:"\f05a";font-family:fontAwesome;color:#e68a00;}
+</style>
+<script>
+const ca_args = {};
+
+function ca_refresh() {
+	refresh();
+}
+
+function ca_hidePluginUpdate(plugin,version,element) {
+	$.cookie(plugin,version);
+	$(element).hide();
+}
+
+function ca_pluginUpdateInstall(plugin) {
+	if (plugin == null) {
+		openPlugin(ca_args.cmd,ca_args.title,'','ca_refresh');
+		return;
+	}
+	ca_args.cmd = 'plugin update '+plugin;
+	ca_args.title = "Installing Update";
+	$.get('/plugins/dynamix.plugin.manager/include/ShowPlugins.php',{cmd:'alert'},function(data) {
+		if (data==0) {
+			// no alert message - proceed with update
+			setTimeout(ca_pluginUpdateInstall);
+		} else {
+			// show alert message and ask for confirmation
+			openAlert("showchanges /tmp/plugins/my_alerts.txt","Alert Message","ca_pluginUpdateInstall");
+		}
+	});
+}
+
+function caPluginUpdateCheck(plugin,options=[],callback) {
+	var pluginFilename = plugin.substr(0, plugin.lastIndexOf("."));
+	console.time("checkPlugin "+plugin);
+	console.log("checkPlugin  "+plugin);
+	$.post("/plugins/dynamix.plugin.manager/scripts/PluginAPI.php",{action:'checkPlugin',options:{plugin:plugin,name:options.name}},function(caAPIresult) {
+		console.groupCollapsed("Result checkPlugin "+plugin);
+		console.log(caAPIresult);
+		console.timeEnd("checkPlugin "+plugin);
+		console.groupEnd();
+		var result = JSON.parse(caAPIresult);
+
+		if ( options.debug == true ) result.updateAvailable = true;
+		if ( ! options.element && ! options.dontShow ) {
+			if ( result.updateAvailable ) {
+				var HTML = result.updateMessage+"<span class='bannerInfo fa fa-info-circle big' title=\"View Release Notes\" onclick='openChanges(\"showchanges /tmp/plugins/"+pluginFilename+".txt\",\"Release Notes\")'></span><a class='ca_PluginUpdateInstall' onclick='ca_pluginUpdateInstall(\""+plugin+"\")'>"+result.linkMessage+"</a>";
+				addBannerWarning(HTML,false,options.noDismiss);
+			}
+		} else {
+			if ( $.cookie(plugin) != result.version ) {
+				if ( result.updateAvailable ) {
+					var HTML = result.updateMessage+"<span class='bannerInfo fa fa-info-circle big' title=\"View Release Notes\" onclick='openChanges(\"showchanges /tmp/plugins/"+pluginFilename+".txt\",\"Release Notes\")'></span><a class='ca_PluginUpdateInstall' onclick='ca_pluginUpdateInstall(\""+plugin+"\")'>"+result.linkMessage+"</a>";
+					if ( ! options.noDismiss ) {
+						HTML = HTML.concat("<span class='ca_PluginUpdateDismiss'><i class='fa fa-close' onclick='ca_hidePluginUpdate(\""+plugin+"\",\""+result.version+"\",\""+options.element+"\")'></i></span>");
+					}
+					result.HTML = HTML;
+					if ( ! options.dontShow ) {
+						$(options.element).html(HTML);
+						$(options.element).addClass("ca_element_notice");
+					}
+				}
+			}
+		}
+		if ( typeof options === "function" ) {
+			callback = options;
+		}
+		if ( typeof callback === "function" ) {
+			callback(JSON.stringify(result));
+		}
+	});
+}
+</script>
+
+<script>timers.reload = setTimeout(function(){location.reload();},1800000);</script>
+<div class='tabs'>
+<!--
+#####################
+webGui/DashStats.page
+#####################
+-->
+<p><link type="text/css" rel="stylesheet" href="/webGui/styles/jquery.switchbutton.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/webGui/styles/jquery.ui.css?v=1700086926">
+<link type="text/css" rel="stylesheet" href="/plugins/dynamix.docker.manager/styles/style-white.css?v=1700086926"></p>
+
+<style>
+div.frame{padding-top:14px;padding-bottom:160px}
+div.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(610px,1fr));column-gap:20px}
+div.tile,i.tile{display:none}
+div#iframe-popup{display:none;-webkit-overflow-scrolling:touch}
+div.last{padding-bottom:12px}
+div.leftside{float:left;width:66%}
+div.rightside{float:right;margin:0;text-align:center}
+div[id$=chart]{margin:-12px 8px -24px -18px}
+span.green,span.red,span.orange{padding-left:0}
+span.ctrl{float:right;margin-top:0;margin-right:10px}
+span.ctrl span{font-size:2rem!important}
+span.outer{float:left}
+span.inner{width:143px}
+span.rx{width:80px;display:inline-block}
+span.busy,i.inactive{opacity:0.5}
+span.dense{width:180px;display:inline-block}
+span#ups_model{margin-right:30px}
+span#chart-toggle{float:right}
+span.header,tr.header{font-size:1.1rem!important;text-transform:uppercase;letter-spacing:1px}
+span.wg1{font-size:1.1rem;text-indent:24px}
+span.wg2{font-size:1.1rem}
+span[id^=cpu],span[id^=sys]{width:0}
+span[class^="fa "]{font-size:1.6rem;margin-right:18px}
+span.load{font-size:85%}
+span.fan{width:36%;display:inline-block}
+span.w18{width:18%;display:inline-block;float:left}
+span.w26{width:26%;display:inline-block;float:left}
+span.w36{width:36%;display:inline-block;float:left}
+span.w44{width:44%;display:inline-block;float:left}
+span.w72{width:72%;display:inline-block;float:left}
+select#cpuline,select#netline{border:none;padding:0 12px 0 0}
+select[name=enter_share]{margin-top:0}
+img#mycase{width:auto;max-width:128px;height:auto;max-height:128px}
+i.heat{margin-left:8px}
+i.ups{margin-right:8px;font-size:1.4rem!important}
+i.vpn{font-size:1.4rem!important;cursor:pointer}
+i.indent{display:inline-block;width:18px}
+i.f32{font-size:32px!important}
+i.f14{font-size:1.4rem!important}
+i.fa.orb{margin-left:0}
+i.fa-wrench.tile{color:#0099ff!important;background-color:rgba(0,153,255,0.1)!important}
+i[class^="icon-"]{font-size:1.6rem;margin-right:8px}
+i[class^="icon-u-"]{font-size:inherit}
+i#mycase[class^="case-"]{font-size:128px}
+i#mycase[class^="fa "]{font-size:96px}
+a.cpu_close,span.hand{cursor:pointer;z-index:1001}
+tr#var0,tr#var1,tr#var2,tr#var3,tr#var4{cursor:alias}
+tr#var1,tr#var4,tr#cpu_chart,.cpu_open{display:none}
+td.none{text-align:center;padding-top:12px}
+input[value=Edit]{margin:12px 0 0 0;padding:5px 10px}
+.share1,.share3,.user1,.user3,.view1,.view2,.view3,.view4,.unused{display:none}
+.port_view,.control,#apps,#vms{z-index:10000}
+.flat{height:0;lineheight:0}
+.wrap{white-space:normal}
+.switch-button-background{margin-left:0;margin-top:4px}
+.switch-button-label{margin-top:3px}
+.ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset button[disabled]{cursor:default;color:#808080;background:-webkit-gradient(linear,left top,right top,from(#404040),to(#808080)) 0 0 no-repeat,-webkit-gradient(linear,left top,right top,from(#404040),to(#808080)) 0 100% no-repeat,-webkit-gradient(linear,left bottom,left top,from(#404040),to(#404040)) 0 100% no-repeat,-webkit-gradient(linear,left bottom,left top,from(#808080),to(#808080)) 100% 100% no-repeat;background:linear-gradient(90deg,#404040 0,#808080) 0 0 no-repeat,linear-gradient(90deg,#404040 0,#808080) 0 100% no-repeat,linear-gradient(0deg,#404040 0,#404040) 0 100% no-repeat,linear-gradient(0deg,#808080 0,#808080) 100% 100% no-repeat;background-size:100% 2px,100% 2px,2px 100%,2px 100%}
+</style>
+
+<p><script src="/webGui/javascript/jquery.apexcharts.js?v=1700086926"></script>
+<script src="/webGui/javascript/jquery.switchbutton.js?v=1700086926"></script>
+<script src="/plugins/dynamix.docker.manager/javascript/docker.js?v=1700087630"></script>
+<script src="/plugins/dynamix.vm.manager/javascript/vmmanager.js?v=1700087630"></script></p>
+
+<div class='frame'>
+<div class='grid'>
+<div class='tile' id='tile1'>
+<table id='db-box1' class='share_status dashboard'>
+<tbody class='system'>
+<tr><td><i class='icon-performance f32'></i><div class='section'>UNRAIDVM<br>
+<span>Media server</span><br></div>
+<a href='/Dashboard/Settings/Identification'><i class='fa fa-fw fa-cog control' title="Go to identification settings"></i></a><i class='fa fa-fw fa-wrench control tile' onclick='contentMgmt()' title="Tile Management"></i>
+<span class='ctrl'>
+<span class='fa fa-fw fa-stop-circle hand' title="Stop the array" onclick='StopArray()'></span>
+<span class='fa fa-fw fa-refresh hand' title="Reboot the system" onclick='Reboot()'></span>
+<span class='fa fa-fw fa-power-off hand' title="Shutdown the system" onclick='Shutdown()'></span></span>
+</td></tr>
+<tr><td>
+<div class='leftside'>
+<span class='header'><i class='indent fa fa-file-text-o'></i>Model</span><br><i class='indent'></i>Custom<br><br>
+<span class='header'><i class='indent fa fa-id-badge'></i>Registration</span><br><i class='indent'></i>Unraid OS <b><em>Basic</em></b><br><br>
+<span class='header'><i class='indent fa fa-clock-o'></i>Uptime</span><br><i class='indent'></i><span class='uptime'></span>
+</div>
+<div class='rightside'>
+<span id='casing'>
+<i id='mycase' class='case-mid-tower'></i><br>
+</span>
+<input type='button' value="Edit" style="margin-right:0" onclick='openChanges("select_case case-model.cfg", "Select Case Model", "selectcase")'>
+</div>
+</td></tr>
+</tbody>
+
+<tbody title="Motherboard Information">
+<tr><td><i class='icon-motherboard f32'></i><div class='section'>Motherboard<br><span id='mb-temp'></span><br></div>
+<a href='#' onclick='InfoButton();' title="Show Information"><i class='fa fa-fw fa-info-circle control'></i></a>
+</td></tr>
+<tr><td>ASUS ASUSTeK COMPUTER INC. , Version Rev 2802<br>ROG STRIX X570-E GAMING, Version Rev 2802<br>BIOS dated: Mon 24 Feb 2020 12:00:00 AM CET</td></tr>
+</tbody>
+
+<tbody title="Processor Information" data="toggleCPU(true)">
+<tr><td><i class='icon-cpu f32'></i><div class='section'>Processor<br><span id='cpu-temp'></span><br></div>
+<a href='/Dashboard/Settings/CPUset' title="Go to CPU pinning settings"><i class='fa fa-fw fa-cog control'></i></a>
+</td></tr>
+<tr><td>Intel&#174; Core&#8482; i7-8700K CPU @ 3.70GHz</td></tr>
+<tr><td><span class='w26'>Overall Load:</span><span class='w72'><span class='cpu load'>0%</span><div class='usage-disk sys'><span id='cpu'></span><span></span></div></span></td></tr>
+<tr id='cpu_main'><td><a onclick='toggleCPU()' title="Click to toggle details" class='cpu_close'>Show details</a><span id='chart-toggle'>
+<span><select id='cpuline' class='auto' title="Select time frame" onchange='changeCPUline(this.value)'>
+<option value='10'>10 s</option><option value='30'>30 s</option><option value='60'>1 m</option><option value='120'>2 m</option><option value='300'>5 m</option></select></span><a onclick='toggleChart()' title="Click to toggle CPU chart"><span class="fa fa-fw fa-bar-chart hand"></span></a></span></td></tr>
+<tr class='cpu_open'><td><span class='w26'>CPU 0 - HT 1</span><span class='dashboard w36'><span class='cpu0 load'>0%</span><div class='usage-disk sys'><span id='cpu0'></span><span></span></div></span><span class='dashboard w36'><span class='cpu1 load'>0%</span><div class='usage-disk sys'><span id='cpu1'></span><span></span></div></span></td></tr><tr class='cpu_open'><td><span class='w26'>CPU 2 - HT 3</span><span class='dashboard w36'><span class='cpu2 load'>0%</span><div class='usage-disk sys'><span id='cpu2'></span><span></span></div></span><span class='dashboard w36'><span class='cpu3 load'>0%</span><div class='usage-disk sys'><span id='cpu3'></span><span></span></div></span></td></tr><tr id='cpu_chart'><td><div id='cpuchart'></div></td></tr>
+</tbody>
+
+<tbody title="Memory Utilization">
+<tr><td><i class='icon-ram f32'></i><div class='section'>System<br><span><i class='ups fa fa-line-chart'></i>Memory: 8 GiB RAM Multi-bit ECC </span><br></div>
+<a href='/Dashboard/Tools/Processes' title="View Running Processes"><i class='fa fa-fw fa-info-circle control'></i></a>
+</td></tr>
+<tr><td><span class='w36'><i class='ups fa fa-compress'></i>Usable size: 7.8 GiB</span><i class='ups fa fa-expand'></i>Maximum size: 8 GiB</td></tr>
+<tr id='var0'><td><span class='w26'><i class='ups fa fa-fw fa-microchip'></i>RAM</span><span class='w72'><span class='sys0 load'>0%</span><div class='usage-disk sys'><span id='sys0'></span><span></span></div></span></td></tr>
+<tr id='var1'><td><span class='w26'><i class='ups fa fa-fw fa-shield'></i>ZFS</span><span class='w72'><span class='sys1 load'>0%</span><div class='usage-disk sys'><span id='sys1'></span><span></span></div></span></td></tr>
+<tr id='var2'><td><span class='w26'><i class='ups fa fa-fw fa-suitcase'></i>Flash</span><span class='w72'><span class='sys2 load'>0%</span><div class='usage-disk sys'><span id='sys2'></span><span></span></div></span></td></tr>
+<tr id='var3'><td><span class='w26'><i class='ups fa fa-fw fa-file-text'></i>Log</span><span class='w72'><span class='sys3 load'>0%</span><div class='usage-disk sys'><span id='sys3'></span><span></span></div></span></td></tr>
+<tr id='var4'><td><span class='w26'><i class='ups fa fa-fw fa-docker'></i>Docker</span><span class='w72'><span class='sys4 load'>0%</span><div class='usage-disk sys'><span id='sys4'></span><span></span></div></span></td></tr>
+</tbody>
+
+<tbody title="Interface Information" class="mixed">
+<tr><td><i class='icon-ethernet f32'></i><div class='section'>Interface<br>
+<span><span class='dense'><i class='ups fa fa-angle-double-down'></i>Inbound: <span id='inbound'>---</span></span><span class='dense'><i class='ups fa fa-angle-double-up'></i>Outbound: <span id='outbound'>---</span></span>
+<i class='ups fa fa-angle-right'></i><select name="port_select" onchange="portSelect(this.value)">
+<option value='bond0'>bond0</option><option value='eth0'>eth0</option><option value='lo'>lo</option></select></span>
+<br></div>
+<a href='/Dashboard/Settings/NetworkSettings' title="Go to network settings"><i class='fa fa-fw fa-cog control'></i></a>
+</td></tr>
+<tr><td><span class='w26'><select name="enter_view" onchange="changeView(this.value)">
+<option value='0'>General info</option><option value='1'>Counters info</option><option value='2'>Errors info</option><option value='3'>Network traffic</option></select></span>
+<span class='w36'><i class='view1'>Mode of operation</i><i class='view2'>Received packets</i><i class='view3'>Receive counters</i><i class='fa fa-fw fa-arrow-down view4 red-text'></i>&nbsp;<i class='view4 red-text'>Inbound</i></span>
+<span class='w36'><i class='view1'></i><i class='view2'>Transmitted packets</i><i class='view3'>Transmit counters</i><i class='fa fa-fw fa-arrow-up view4 orange-text'></i>&nbsp;<i class='view4 orange-text'>Outbound</i>
+<span class='view4' style='float:right'><select id='netline' class='auto' title="Select time frame" onchange='changeNetline(this.value)'>
+<option value='10'>10 s</option><option value='30'>30 s</option><option value='60'>1 m</option><option value='120'>2 m</option><option value='300'>5 m</option></select></span></span></td></tr>
+<tr class='view1'><td><span class='w26'>bond0</span><span class='w72' id='main0'></span></td></tr><tr class='view1'><td><span class='w26'>eth0</span><span class='w72' id='main1'></span></td></tr><tr class='view1 last'><td><span class='w26'>lo</span><span class='w72' id='main2'></span></td></tr><tr class='view2'><td><span class='w26'>bond0</span><span class='w36' id='port0'></span><span class='w36' id='port1'></span></td></tr><tr class='view2'><td><span class='w26'>eth0</span><span class='w36' id='port2'></span><span class='w36' id='port3'></span></td></tr><tr class='view2 last'><td><span class='w26'>lo</span><span class='w36' id='port4'></span><span class='w36' id='port5'></span></td></tr><tr class='view3'><td><span class='w26'>bond0</span><span class='w36' id='link0'></span><span class='w36' id='link1'></span></td></tr><tr class='view3'><td><span class='w26'>eth0</span><span class='w36' id='link2'></span><span class='w36' id='link3'></span></td></tr><tr class='view3 last'><td><span class='w26'>lo</span><span class='w36' id='link4'></span><span class='w36' id='link5'></span></td></tr><tr class="view4"><td><div id="netchart"></div></td></tr>
+</tbody>
+
+
+
+</table>
+</div>
+
+<div class='tile' id='tile2'>
+<table id='db-box2' class='share_status dashboard'>
+
+<tbody title="Shares Information" class="mixed">
+<tr><td><i class='icon-folder f32'></i><div class='section'>Shares
+<select name="enter_share" onchange="changeMode(this.value)">
+<option value='0'>SMB</option></select>
+<br><span>
+Share count: 5 with 0 cache only and 0 encrypted</span><br></div>
+<a href='/Shares' title="Go to Share settings"><i class='fa fa-fw fa-cog control'></i></a>
+</td></tr>
+<tr class='header'><td><span class='w26'>Name</span><span class='w44'>Description</span><span class='w18'>Security</span><span>Streams</span></td></tr>
+<tr class='smb share share1'><td><span class='w26'><i class='icon-folder f14'></i><a href="/Dashboard/Shares/Share?name=appdata" class="blue-text" title="appdata settings">appdata</a></span><span class='w44'>application data</span><span class='w18'>-</span><span id='share1'>0</span></td></tr><tr class='smb share share1'><td><span class='w26'><i class='icon-folder f14'></i><a href="/Dashboard/Shares/Share?name=domains" class="blue-text" title="domains settings">domains</a></span><span class='w44'>saved VM instances</span><span class='w18'>-</span><span id='share2'>0</span></td></tr><tr class='smb share share1'><td><span class='w26'><i class='icon-folder f14'></i><a href="/Dashboard/Shares/Share?name=isos" class="blue-text" title="isos settings">isos</a></span><span class='w44'>ISO images</span><span class='w18'>-</span><span id='share3'>0</span></td></tr><tr class='smb share share1'><td><span class='w26'><i class='icon-folder f14'></i><a href="/Dashboard/Shares/Share?name=no_in_cache" class="blue-text" title="no_in_cache settings">no_in_cache</a></span><span class='w44'>&nbsp;</span><span class='w18'>-</span><span id='share4'>0</span></td></tr><tr class='smb share share1 last'><td><span class='w26'><i class='icon-folder f14'></i><a href="/Dashboard/Shares/Share?name=system" class="blue-text" title="system settings">system</a></span><span class='w44'>system data</span><span class='w18'>-</span><span id='share5'>0</span></td></tr></tbody>
+
+<tbody title="Users Information" class="mixed">
+<tr><td><i class='icon-users f32'></i><div class='section'>Users
+<select name="enter_user" class="unused">
+<option value='0'>SMB</option></select>
+<br><span>
+User count: 1 with 0 unprotected</span><br></div>
+<a href='/Users' title="Go to User settings"><i class='fa fa-fw fa-cog control'></i></a>
+</td></tr>
+<tr class='header'><td><span class='w26'>Name</span><span class='w44'>Description</span><span class='w18'>Write</span><span>Read</span></td></tr>
+<tr class='smb user user1 last'><td><span class='w26'><i class='icon-user f14'></i><a href="/Dashboard/Users/UserEdit?name=root" class="blue-text" title="root settings">root</a></span><span class='w44'>Console and webGui login account</span><span class='w18'>-</span><span>-</span></td></tr></tbody>
+</table>
+</div>
+
+<div class='tile' id='tile3'>
+<table id='db-box3' class='share_status dashboard'>
+<tbody title="Parity Information">
+<tr><td><i class='icon-health f32'></i><div class='section'>Parity<br>
+<span class='parity'></span><br></div>
+<a href='/Dashboard/Settings/Scheduler' title="Go to scheduler settings"><i class='fa fa-fw fa-cog control'></i></a>
+</td></tr>
+</td></tr>
+<tr><td id='parity' class="wrap"></td></tr>
+<tr><td id='program' class="wrap"></td></tr>
+</tbody>
+
+<tbody id='array_list' title="Array Information">
+<tr><td><i class='icon-disks f32'></i><div class='section'>Array<br>
+<span>2.76 GB used of 107 GB (2.6 %)</span><br></div>
+<a href='/Dashboard/Settings/DiskSettings' title="Go to disk settings"><i class='fa fa-fw fa-cog control'></i></a>
+</td></tr>
+<tr><td id='array_info'></td></tr>
+<tr class='header'><td><span class='w26'>Device</span><span class='w18'>Status</span><span class='w18'>Temp</span><span class='w18'>SMART</span><span class='w18'>Utilization</span></td></tr>
+</tbody>
+
+<tbody id='pool_list0' title="Cache Information">
+<tr><td><i class='icon-disk f32'></i><div class='section'>Cache<br>
+<span>35.6 GB used of 53.7 GB (66.3 %)</span><br></div>
+<a href='/Dashboard/Settings/Device?name=cache' title="Go to disk settings"><i class='fa fa-fw fa-cog control'></i></a>
+</td></tr>
+<tr><td id='pool_info0'></td></tr>
+<tr class='header'><td><span class='w26'>Device</span><span class='w18'>Status</span><span class='w18'>Temp</span><span class='w18'>SMART</span><span class='w18'>Utilization</span></td></tr>
+</tbody>
+
+</table>
+</div>
+</div>
+</div>
+
+<form name='boot' method='POST' action='/webGui/include/Boot.php'>
+<input type='hidden' name='csrf_token' value='63F1FD87F6F1C333'>
+<input type='hidden' name='cmd' value=''>
+</form>
+
+<div id="iframe-popup"></div>
+
+<div id="templateContentMgmt" class="template">
+<!--!
+<style>
+.item{display:inline-block;width:210px;float:left;height:4rem}
+</style>
+<script>
+var table = $('table.dashboard');
+var index = [], sort = [], checked = [];
+table.find('tbody').not('.system').each(function(){
+  index.push($(this).attr('title'));
+  sort.push($(this).attr('sort'));
+  checked.push($(this).is(':visible') ? 'checked' : '');
+});
+for (let n=0,x; x=index[n]; n++) {
+  $('div#list').append("<span class='item'><input class='checker' type='checkbox' "+checked[n]+">"+x+"</span>");
+}
+function hideShow() {
+  let n = 0, inactive = [];
+  var count = {'db-box1':0, 'db-box2':0, 'db-box3':0};
+  $('input.checker').each(function(){
+    var tbody = $('table.dashboard').find('tbody[sort="'+sort[n]+'"]');
+    var id = tbody.parent().prop('id');
+    if ($(this).prop('checked')) {
+      tbody.show();
+      count[id]++;
+    } else {
+      tbody.hide();
+      inactive.push(sort[n]);
+    }
+    n++;
+  });
+  count[table.find('tbody.system').parent().prop('id')]++;
+  if (count['db-box1']>0) $('div#tile1').show(); else $('div#tile1').hide();
+  if (count['db-box2']>0) $('div#tile2').show(); else $('div#tile2').hide();
+  if (count['db-box3']>0) $('div#tile3').show(); else $('div#tile3').hide();
+  if (inactive.length>0) {
+    $.cookie('inactive_content',inactive.join(';'),{expires:3650});
+  } else {
+    $.removeCookie('inactive_content');
+  }
+}
+</script>
+<div id="list"></div>
+!-->
+</div>
+
+<script>
+Number.prototype.pad = function(size){var s=String(this);while(s.length<(size||2)){s='0'+s;}return s;}
+Array.prototype.tail = function(t){return this.slice(-t).map(function(o){return o.y;}).join(';');}
+String.prototype.build = function(){return this.replace(/\n(<!--!|!-->)\n/g,'');}
+String.prototype.md5 = function() {
+  // Original copyright (c) Paul Johnston & Greg Holt.
+  var hc = '0123456789abcdef';
+  function rh(n){var j,s='';for(j=0;j<=3;j++) s+=hc.charAt((n>>(j*8+4))&0x0F)+hc.charAt((n>>(j*8))&0x0F);return s;}
+  function ad(x,y){var l=(x&0xFFFF)+(y&0xFFFF);var m=(x>>16)+(y>>16)+(l>>16);return (m<<16)|(l&0xFFFF);}
+  function rl(n,c){return (n<<c)|(n>>>(32-c));}
+  function cm(q,a,b,x,s,t){return ad(rl(ad(ad(a,q),ad(x,t)),s),b);}
+  function ff(a,b,c,d,x,s,t){return cm((b&c)|((~b)&d),a,b,x,s,t);}
+  function gg(a,b,c,d,x,s,t){return cm((b&d)|(c&(~d)),a,b,x,s,t);}
+  function hh(a,b,c,d,x,s,t){return cm(b^c^d,a,b,x,s,t);}
+  function ii(a,b,c,d,x,s,t){return cm(c^(b|(~d)),a,b,x,s,t);}
+  function sb(x) {
+    var i;var nblk=((x.length+8)>>6)+1;var blks=new Array(nblk*16);for(i=0;i<nblk*16;i++) blks[i]=0;
+    for(i=0;i<x.length;i++) blks[i>>2]|=x.charCodeAt(i)<<((i%4)*8);
+    blks[i>>2]|=0x80<<((i%4)*8);blks[nblk*16-2]=x.length*8;return blks;
+  }
+  var i,x=sb(''+this),a=1732584193,b=-271733879,c=-1732584194,d=271733878,olda,oldb,oldc,oldd;
+  for(i=0;i<x.length;i+=16) {olda=a;oldb=b;oldc=c;oldd=d;
+    a=ff(a,b,c,d,x[i+ 0], 7, -680876936);d=ff(d,a,b,c,x[i+ 1],12, -389564586);c=ff(c,d,a,b,x[i+ 2],17,  606105819);
+    b=ff(b,c,d,a,x[i+ 3],22,-1044525330);a=ff(a,b,c,d,x[i+ 4], 7, -176418897);d=ff(d,a,b,c,x[i+ 5],12, 1200080426);
+    c=ff(c,d,a,b,x[i+ 6],17,-1473231341);b=ff(b,c,d,a,x[i+ 7],22,  -45705983);a=ff(a,b,c,d,x[i+ 8], 7, 1770035416);
+    d=ff(d,a,b,c,x[i+ 9],12,-1958414417);c=ff(c,d,a,b,x[i+10],17,     -42063);b=ff(b,c,d,a,x[i+11],22,-1990404162);
+    a=ff(a,b,c,d,x[i+12], 7, 1804603682);d=ff(d,a,b,c,x[i+13],12,  -40341101);c=ff(c,d,a,b,x[i+14],17,-1502002290);
+    b=ff(b,c,d,a,x[i+15],22, 1236535329);a=gg(a,b,c,d,x[i+ 1], 5, -165796510);d=gg(d,a,b,c,x[i+ 6], 9,-1069501632);
+    c=gg(c,d,a,b,x[i+11],14,  643717713);b=gg(b,c,d,a,x[i+ 0],20, -373897302);a=gg(a,b,c,d,x[i+ 5], 5, -701558691);
+    d=gg(d,a,b,c,x[i+10], 9,   38016083);c=gg(c,d,a,b,x[i+15],14, -660478335);b=gg(b,c,d,a,x[i+ 4],20, -405537848);
+    a=gg(a,b,c,d,x[i+ 9], 5,  568446438);d=gg(d,a,b,c,x[i+14], 9,-1019803690);c=gg(c,d,a,b,x[i+ 3],14, -187363961);
+    b=gg(b,c,d,a,x[i+ 8],20, 1163531501);a=gg(a,b,c,d,x[i+13], 5,-1444681467);d=gg(d,a,b,c,x[i+ 2], 9,  -51403784);
+    c=gg(c,d,a,b,x[i+ 7],14, 1735328473);b=gg(b,c,d,a,x[i+12],20,-1926607734);a=hh(a,b,c,d,x[i+ 5], 4,    -378558);
+    d=hh(d,a,b,c,x[i+ 8],11,-2022574463);c=hh(c,d,a,b,x[i+11],16, 1839030562);b=hh(b,c,d,a,x[i+14],23,  -35309556);
+    a=hh(a,b,c,d,x[i+ 1], 4,-1530992060);d=hh(d,a,b,c,x[i+ 4],11, 1272893353);c=hh(c,d,a,b,x[i+ 7],16, -155497632);
+    b=hh(b,c,d,a,x[i+10],23,-1094730640);a=hh(a,b,c,d,x[i+13], 4,  681279174);d=hh(d,a,b,c,x[i+ 0],11, -358537222);
+    c=hh(c,d,a,b,x[i+ 3],16, -722521979);b=hh(b,c,d,a,x[i+ 6],23,   76029189);a=hh(a,b,c,d,x[i+ 9], 4, -640364487);
+    d=hh(d,a,b,c,x[i+12],11, -421815835);c=hh(c,d,a,b,x[i+15],16,  530742520);b=hh(b,c,d,a,x[i+ 2],23, -995338651);
+    a=ii(a,b,c,d,x[i+ 0], 6, -198630844);d=ii(d,a,b,c,x[i+ 7],10, 1126891415);c=ii(c,d,a,b,x[i+14],15,-1416354905);
+    b=ii(b,c,d,a,x[i+ 5],21,  -57434055);a=ii(a,b,c,d,x[i+12], 6, 1700485571);d=ii(d,a,b,c,x[i+ 3],10,-1894986606);
+    c=ii(c,d,a,b,x[i+10],15,   -1051523);b=ii(b,c,d,a,x[i+ 1],21,-2054922799);a=ii(a,b,c,d,x[i+ 8], 6, 1873313359);
+    d=ii(d,a,b,c,x[i+15],10,  -30611744);c=ii(c,d,a,b,x[i+ 6],15,-1560198380);b=ii(b,c,d,a,x[i+13],21, 1309151649);
+    a=ii(a,b,c,d,x[i+ 4], 6, -145523070);d=ii(d,a,b,c,x[i+11],10,-1120210379);c=ii(c,d,a,b,x[i+ 2],15,  718787259);
+    b=ii(b,c,d,a,x[i+ 9],21, -343485551);a=ad(a,olda);b=ad(b,oldb);c=ad(c,oldc);d=ad(d,oldd);
+  }
+  return rh(a)+rh(b)+rh(c)+rh(d);
+}
+jQuery.prototype.hideMe = function() {
+  var hidden = $.cookie('hidden_content');
+  hidden = hidden==null ? [] : hidden.split(';');
+  if (hidden.indexOf(this.attr('sort'))>=0) this.find('tr:gt(0)').hide();
+}
+jQuery.prototype.mixedView = function(s) {
+  if (s==0) {
+    this.find('tr:gt(0)').hide();
+    return;
+  }
+  this.find('tr:gt(0)').show();
+  if (this.attr('data')) {
+    setTimeout(this.attr('data'));
+  }
+  if (this.hasClass('mixed')) {
+    var select = this.find('select[name^="enter"]');
+    select = parseInt(select.val())+1;
+    this.find('tr:gt(0)').each(function(){
+      var names = ($(this).attr('class')||'').split(' ');
+      for (let n=0,name; name=names[n]; n++) if (/[0-9]/.test(name.slice(-1)) && name.slice(-1)!=select) $(this).hide();
+    });
+  }
+}
+function sanitizeMultiCookie(cookieName, delimiter, removeDuplicates = false) {
+  // Some browser states leave multi-value cookies with nulls, empties or duplicates.
+  // This function cleans up any such cookies so that they do not break functionality.
+  try {
+    var uncleanCookie = $.cookie(cookieName);
+    if (uncleanCookie) {
+      uncleanCookie = uncleanCookie.split(delimiter);
+      var cleanCookie = uncleanCookie.filter(n => n);
+      if (removeDuplicates) { cleanCookie = [...new Set(cleanCookie)]; }
+      if (JSON.stringify(uncleanCookie) !== JSON.stringify(cleanCookie)) {
+        $.cookie(cookieName,cleanCookie.join(delimiter),{expires:3650});
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  } catch (ex) {
+    return false;
+  }
+}
+
+var ports   = ["bond0","eth0","lo"];
+var cpu     = [];
+var rxd     = [];
+var txd     = [];
+var cputime = 0;
+var nettime = 0;
+var cpuline = $.cookie('cpuline')||30;
+var netline = $.cookie('netline')||30;
+var update2 = true;
+var box     = null;
+var startup = true;
+
+var options_cpu = {
+  series:[{name:'load', data:cpu.slice()}],
+  chart:{height:120, type:'line', fontFamily:'clear-sans', animations:{enabled:true, easing:'linear', dynamicAnimation:{speed:1000}}, toolbar:{show:false}, zoom:{enabled:false}},
+  dataLabels:{enabled:false},
+  tooltip:{enabled:false},
+  stroke:{curve:'smooth', width:1},
+  colors:['#ff8c2f'],
+  markers:{size:0},
+  xaxis:{type:'datetime', range:cpuline-1, labels:{show:false}, axisTicks:{show:false}, axisBorder:{show:false}},
+  yaxis:{max:100, tickAmount:4, labels:{formatter:function(v,i){return v.toFixed(0)+' %';}, style:{colors:'#1c1b1b'}}, axisBorder:{show:false}, axisTicks:{show:false}},
+  grid:{show:true, borderColor:'#e3e3e3'},
+  legend:{show:false}
+};
+var options_net = {
+  series:[{name:'receive', data:rxd.slice()},{name:'transmit', data:txd.slice()}],
+  chart:{height:120, type:'line', fontFamily:'clear-sans', animations:{enabled:true, easing:'linear', dynamicAnimation:{speed:1000}}, toolbar:{show:false}, zoom:{enabled:false}},
+  dataLabels:{enabled:false},
+  tooltip:{enabled:false},
+  stroke:{curve:'smooth', width:1},
+  colors:['#e22828','#ff8c2f'],
+  markers:{size:0},
+  xaxis:{type:'datetime', range:netline-1, labels:{show:false}, axisTicks:{show:false}, axisBorder:{show:false}},
+  yaxis:{tickAmount:4, labels:{formatter:function(v,i){return autoscale(v,'bps',1);}, style:{colors:'#1c1b1b'}}, axisBorder:{show:false}, axisTicks:{show:false}},
+  grid:{show:true, borderColor:'#e3e3e3'},
+  legend:{show:false}
+};
+
+var cpuchart = new ApexCharts(document.querySelector('#cpuchart'), options_cpu);
+var netchart = new ApexCharts(document.querySelector('#netchart'), options_net);
+
+if ($.cookie('port_select')!=null && !ports.includes($.cookie('port_select'))) $.removeCookie('port_select');
+var port_select = $.cookie('port_select')||ports[0];
+
+function initCharts(clear) {
+  $.post('/webGui/include/InitCharts.php',{cmd:'get'},function(data) {
+    data = JSON.parse(data);
+    // initialize graphs entries
+    var now = new Date().getTime();
+    if (!clear) {
+      var c = data.cpu.split(';');
+      var r = data.rxd.split(';');
+      var t = data.txd.split(';');
+      for (var i=0; i < cpuline; i++) {
+        var x = now + i;
+        var y = c[i]||0; cpu.push({x,y});
+      }
+      cputime = x + 1;
+    } else {
+      // clear network graph
+      var r = ''; var t = '';
+      rxd = []; txd = [];
+    }
+    for (var i=0; i < netline; i++) {
+      var x = now + i;
+      var y = r[i]||0; rxd.push({x,y});
+      var y = t[i]||0; txd.push({x,y});
+    }
+    nettime = x + 1;
+  });
+}
+function resetCharts() {
+  // prevent unlimited graph growing
+  cpu = cpu.slice(-cpuline);
+  rxd = rxd.slice(-netline);
+  txd = txd.slice(-netline);
+}
+function addChartCpu(load) {
+  cputime++;
+  var i = cpu.length - cpuline;
+  if (i > 0) { // clear value outside graph
+    i = i - 1;
+    cpu[i].x = cputime - cpuline;
+    cpu[i].y = 0;
+  }
+  cpu.push({x:cputime, y:load});
+}
+function addChartNet(rx, tx) {
+  nettime++;
+  var i = rxd.length - netline;
+  if (i > 0) { // clear value outside graph
+    i = i - 1;
+    rxd[i].x = nettime - netline;
+    rxd[i].y = 0;
+    txd[i].x = nettime - netline;
+    txd[i].y = 0;
+  }
+  rxd.push({x:nettime, y:rx});
+  txd.push({x:nettime, y:tx});
+}
+function noApps() {
+  if ($('span.outer.apps:visible').length==0) $('#no_apps').show(); else $('#no_apps').hide();
+}
+function noVMs() {
+  if ($('span.outer.vms:visible').length==0) $('#no_vms').show(); else $('#no_vms').hide();
+}
+function loadlist(init) {
+  if (init) {
+    $('#apps').switchButton({labels_placement:'right', off_label:"All Apps", on_label:"Started only", checked:$.cookie('my_apps')=='startedOnly'});
+    $('#vms').switchButton({labels_placement:'right', off_label:"All VMs", on_label:"Started only", checked:$.cookie('my_vms')=='startedOnly'});
+    $('#apps').change(function(){
+      $('span.outer.apps.stopped').finish().toggle('fast',function(){noApps();})
+      $('#apps').is(':checked') ? $.cookie('my_apps','startedOnly',{expires:3650}) : $.removeCookie('my_apps');
+    });
+    $('#vms').change(function(){
+      $('span.outer.vms.stopped').finish().toggle('fast',function(){noVMs();});
+      $('#vms').is(':checked') ? $.cookie('my_vms','startedOnly',{expires:3650}) : $.removeCookie('my_vms');
+    });
+  }
+  $.post('/webGui/include/DashboardApps.php',{display:'icons',docker:'',vms:''},function(d) {
+    var data = d.split('\0');
+    $('#docker_view tr.updated').remove();
+    $('#docker_view').append(data[0]).hideMe();
+    $('#vm_view tr.updated').remove();
+    $('#vm_view').append(data[1]).hideMe();
+    if ($.cookie('my_apps')!=null) $('span.apps.stopped').hide(0,noApps());
+    if ($.cookie('my_vms')!=null) $('span.vms.stopped').hide(0,noVMs());
+  });
+}
+function getCase() {
+  $.post('/webGui/include/SelectCase.php',{mode:'get',file:'case-model.cfg'},function(model){
+    if (!model) {
+      $('#casing').html("<i id='mycase' class='fa fa-hdd-o'></i><br>");
+    } else if (model.indexOf('.png')<0) {
+      $('#casing').html("<i id='mycase' class='case-"+model+"'></i><br>");
+    } else {
+      var now = new Date();
+      $('#casing').html("<img id='mycase' src='/webGui/images/"+model+"?v="+now.getTime()+"'><br>");
+    }
+  });
+}
+function changeMode(item) {
+  if (item==0) $.removeCookie('enter_share'); else $.cookie('enter_share',item,{expires:3650});
+  if (startup || $('.smb.share1').parent().find('tr:eq(1)').is(':visible')) {
+    if (item==0) $('.smb.share1').show(); else $('.smb.share1').hide();
+  }
+  if (startup || $('.smb.user1').parent().find('tr:eq(1)').is(':visible')) {
+    if (item==0) $('.smb.user1').show(); else $('.smb.user1').hide();
+  }
+  $('select[name="enter_user"]').val(item);
+}
+function changeView(item) {
+  if (item==0) $.removeCookie('enter_view'); else $.cookie('enter_view',item,{expires:3650});
+  if (item==0) $('.view1').show(); else $('.view1').hide();
+  if (item==1) $('.view2').show(); else $('.view2').hide();
+  if (item==2) $('.view3').show(); else $('.view3').hide();
+  if (item==3) $('.view4').show(); else $('.view4').hide();
+}
+function changeCPUline(val) {
+  cpuline = val;
+  if (val==30) $.removeCookie('cpuline'); else $.cookie('cpuline',val,{expires:3650});
+  cpuchart.updateOptions({xaxis:{range:cpuline-1}});
+}
+function changeNetline(val) {
+  netline = val;
+  if (val==30) $.removeCookie('netline'); else $.cookie('netline',val,{expires:3650});
+  netchart.updateOptions({xaxis:{range:netline-1}});
+}
+function smartMenu(table) {
+  $(table).find('[id^="smart-"]').each(function() {
+    var opts = [];
+    var id = '#'+$(this).attr('id');
+    var page = $(this).attr('name');
+    var view = $(this).attr('class');
+    var disk = id.substr(id.indexOf('-')+1);
+    opts.push({text:"Attributes",icon:'fa-sitemap',action:function(e){e.preventDefault();attributes(page,disk);}});
+    opts.push({divider:true});
+    opts.push({text:"Capabilities",icon:'fa-user',action:function(e){e.preventDefault();capabilities(page,disk);}});
+    opts.push({divider:true});
+    opts.push({text:"Identity",icon:'fa-home',action:function(e){e.preventDefault();identity(page,disk);}});
+    if (view.search('green-text') == -1) {
+      opts.push({divider:true});
+      opts.push({text:"Acknowledge",icon:'fa-check-square-o',action:function(e){e.preventDefault();acknowledge(id,disk);}});
+    }
+    $(id).bind('click',function(){update2=false;}).bind('mouseout',function(){setTimeout(function(){update2=true;},15000);});
+    context.attach(id,opts);
+  });
+}
+function portMenu() {
+  var select = 'select[name="port_select"]';
+  var option = $(select+' option');
+  for (var i=0; i < option.length; i++) {
+    if (option[i].value == port_select) {option[i].selected = true; break;}
+  }
+}
+function portSelect(name) {
+  $.cookie('port_select',name,{expires:3650});
+  initCharts(true);
+  port_select = name;
+}
+function moreInfo(data,table) {
+  var info = [];
+  if (data[1]>0) info.push(data[1]+" failed device"+(data[1]==1?'':'s'));
+  if (data[2]>0) info.push(data[2]+" heat warning"+(data[2]==1?'':'s'));
+  if (data[3]>0) info.push(data[3]+" SMART error"+(data[3]==1?'':'s'));
+  if (data[4]>0) info.push(data[4]+" utilization warning"+(data[4]==1?'':'s'));
+  return info.length ? "<div class='last'><i class='icon-u-triangle failed'></i><span class='failed'>"+table+" has "+info.join('. ')+".</span></div>" : "";
+}
+function autoscale(value,text,size,kilo) {
+  if (kilo==null) kilo = 1000;
+  var unit = kilo==1024 ? ['','ki','Mi','Gi','Ti','Pi','Ei'] : ['','k','M','G','T','P','E'];
+  var base = value>1?Math.floor(Math.log(value)/Math.log(kilo)):0;
+  var data = base<unit.length?value/Math.pow(kilo, base):0;
+  var scale = (data<100?100:10)/size;
+  if (data==0) base=0;
+  return ((Math.round(scale*data)/scale)+' '+unit[base]+text).replace(".",".");
+}
+function update900() {
+  // prevent chart overflowing, reset every 15 minutes
+  resetCharts();
+  setTimeout(update900,900000);
+}
+function attributes(page,disk) {
+  var tab = page=='New' ? 'tab2' : 'tab3';
+  $.cookie('one',tab);
+  location.replace('/Dashboard/'+page+'?name='+disk);
+}
+function capabilities(page,disk) {
+  var tab = page=='New' ? 'tab3' : 'tab4';
+  $.cookie('one',tab);
+  location.replace('/Dashboard/'+page+'?name='+disk);
+}
+function identity(page,disk) {
+  var tab = page=='New' ? 'tab4' : 'tab5';
+  $.cookie('one',tab);
+  location.replace('/Dashboard/'+page+'?name='+disk);
+}
+function acknowledge(id,disk) {
+  $.post('/webGui/include/Acknowledge.php',{disk:disk},function(){$(id).removeClass('fa-thumbs-o-down orange-text').addClass('fa-thumbs-o-up green-text');$(id.replace('smart','text')).text("healthy");});
+}
+function dropdown(menu) {
+  var select = 'select[name="'+menu+'"]';
+  var size   = $(select+' option').length;
+  var option = $.cookie(menu)||0;
+  if (option >= size) option = 0;
+  $(select+' option')[option].selected = true;
+  $(select).change();
+}
+function toggleCPU(init) {
+  if (!init) {if ($.cookie('cpu')==null) $.cookie('cpu','close',{expires:3650}); else $.removeCookie('cpu');}
+  if ($.cookie('cpu')==null) {
+    $('.cpu_open').show();
+    $('.cpu_close').text("Hide details");
+  } else {
+    $('.cpu_open').hide();
+    $('.cpu_close').text("Show details");
+  }
+  setTimeout(function(){toggleChart(true);});
+}
+function toggleChart(init) {
+  if (!init) {if ($.cookie('cpu-chart')==null) $.cookie('cpu-chart','close',{expires:3650}); else $.removeCookie('cpu-chart');}
+  $('#cpu_main').removeClass('last');
+  $('.cpu_open:last').removeClass('last');
+  if ($.cookie('cpu-chart')==null) {
+    var hidden = $.cookie('hidden_content');
+    hidden = hidden==null ? [] : hidden.split(';');
+    if (hidden.indexOf($('#cpu_main').parent().attr('sort'))==-1) {
+      $('#cpu_chart').show();
+      $('#cpuline').show();
+    } else {
+      $('#cpu_chart').hide();
+      $('#cpuline').hide();
+    }
+  } else {
+    $('#cpu_chart').hide();
+    $('#cpuline').hide();
+    if ($('.cpu_open').is(':visible')) $('.cpu_open:last').addClass('last'); else $('#cpu_main').addClass('last');
+  }
+}
+function StopArray() {
+  swal({title:"Proceed?",text:"This will stop the array",type:'warning',html:true,showCancelButton:true,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(){StopArrayNow();});
+}
+function StopArrayNow() {
+  $('span.hand').prop('onclick',null).off('click').addClass('busy').css('cursor','default');
+  $.post('/update.htm',{startState:'STARTED',cmdStop:'Stop',csrf_token:'63F1FD87F6F1C333'},function(){refresh();});
+}
+function StartArray() {
+  swal({title:"Proceed?",text:"This will start the array",type:'warning',html:true,showCancelButton:true,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(){StartArrayNow();});
+}
+function StartArrayNow() {
+  $('span.hand').prop('onclick',null).off('click').addClass('busy').css('cursor','default');
+  $.post('/update.htm',{startState:'STARTED',cmdStart:'Start',csrf_token:'63F1FD87F6F1C333'},function(){refresh();});
+}
+function Reboot() {
+  swal({title:"Proceed?",text:"This will reboot the system",type:'warning',html:true,showCancelButton:true,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(){RebootNow();});
+}
+function RebootNow() {
+  document.boot.cmd.value = 'reboot';
+  document.boot.submit();
+}
+function Shutdown() {
+  swal({title:"Proceed?",text:"This will shutdown the system",type:'warning',html:true,showCancelButton:true,confirmButtonText:"Proceed",cancelButtonText:"Cancel"},function(){ShutdownNow();});
+}
+function ShutdownNow() {
+  document.boot.cmd.value = 'shutdown';
+  document.boot.submit();
+}
+function sortTables() {
+  $('table.dashboard').each(function(){
+    var table = $(this);
+    var index = $.cookie(table.prop('id'));
+    // sorting list exists
+    if (index != null) {
+      index = index.split(';');
+      for (var i=0,n; n=index[i]; i++) {
+        var tbody = table.find('tbody[sort="'+n+'"]');
+        // element not in this table?
+        if (tbody.length==0) {
+          // search the other tables to find the element
+          $('table.dashboard').not(table).each(function(){
+            var other = $(this).find('tbody[sort="'+n+'"]');
+            if (other.length) tbody = other;
+          });
+        }
+        tbody.appendTo(table);
+      }
+    }
+  });
+}
+function addProperties() {
+  $('div.frame tbody.system').addClass('sortable').attr('sort','_system_information_'.md5());
+  $('div.frame tbody.system').find('td:first').prepend("<i class='fa fa-fw fa-eject control' onclick='openClose()' title=\"Show/Hide All Content\"></i>");
+  $('div.frame tbody').each(function(){
+    $(this).find('td:first').prepend("<i class='fa fa-fw fa-chevron-up control openclose' onclick='openClose($(this))' title=\"Show/Hide Content\"></i>");
+  });
+  $('div.frame tbody').not('.system').each(function(){
+    $(this).addClass('sortable').attr('sort',$(this).attr('title').md5());
+    $(this).find('td:first').prepend("<i class='fa fa-fw fa-close control tile' onclick='dismiss($(this))' title=\"Close Tile\"></i>");
+  });
+  $('div.frame tr').attr('title','');
+  $('tr#var0').hover(function(){$.post('/webGui/include/DashboardApps.php',{sys:0},function(val){$('.sys0').text(val);})});
+  $('tr#var2').hover(function(){$.post('/webGui/include/DashboardApps.php',{sys:2},function(val){$('.sys2').text(val);})});
+  $('tr#var3').hover(function(){$.post('/webGui/include/DashboardApps.php',{sys:3},function(val){$('.sys3').text(val);})});
+}
+function showContent() {
+  var count = {'db-box1':$('table#db-box1 tbody').length, 'db-box2':$('table#db-box2 tbody').length, 'db-box3':$('table#db-box3 tbody').length}
+  sanitizeMultiCookie('inactive_content', ';', true);
+  var inactive = $.cookie('inactive_content');
+  if (inactive) {
+    inactive = inactive.split(';');
+    for (let n=0,md5; md5=inactive[n]; n++) {
+      var tbody = $('table.dashboard tbody[sort="'+md5+'"]');
+      var id = tbody.parent().prop('id');
+      count[id]--;
+      tbody.hide();
+    }
+  }
+  sanitizeMultiCookie('hidden_content', ';', true);
+  var hidden = $.cookie('hidden_content');
+  if (hidden) {
+    hidden = hidden.split(';');
+    for (let n=0,md5; md5=hidden[n]; n++) {
+      var tbody = $('div.frame tbody[sort="'+md5+'"]');
+      tbody.find('.openclose').removeClass('fa-chevron-up fa-chevron-down').addClass('fa-chevron-down');
+      tbody.find('tr:gt(0)').hide();
+    }
+  }
+  if (count['db-box1']>0) $('div#tile1').show();
+  if (count['db-box2']>0) $('div#tile2').show();
+  if (count['db-box3']>0) $('div#tile3').show();
+}
+function setColor(l, t1, t2) {
+  switch (true) {
+  case (t1 > 0 && l >= t1): return 'redbar';
+  case (t2 > 0 && l >= t2): return 'orangebar';
+  default: return '';}
+}
+function openClose(button) {
+  var hidden = $.cookie('hidden_content');
+  hidden = hidden==null ? [] : hidden.split(';');
+  if (button) {
+    // show/hide single tile content
+    var tbody = button.closest('tbody');
+    if (button.hasClass('fa-chevron-up')) {
+      button.removeClass('fa-chevron-up fa-chevron-down').addClass('fa-chevron-down');
+      tbody.mixedView(0);
+      hidden.push(tbody.attr('sort'));
+    } else {
+      button.removeClass('fa-chevron-up fa-chevron-down').addClass('fa-chevron-up');
+      tbody.mixedView(1);
+      hidden.splice(hidden.indexOf(tbody.attr('sort')),1);
+    }
+    $.cookie('hidden_content',hidden.join(';'),{expires:3650});
+  } else {
+    // show/hide all tiles content
+    if (hidden.length==0) {
+      $('div.frame tbody').each(function(){
+        $(this).find('.openclose').removeClass('fa-chevron-up fa-chevron-down').addClass('fa-chevron-down');
+        $(this).mixedView(0);
+        hidden.push($(this).attr('sort'));
+      });
+      $.cookie('hidden_content',hidden.join(';'),{expires:3650});
+    } else {
+      $('div.frame tbody').each(function(){
+        $(this).find('.openclose').removeClass('fa-chevron-up fa-chevron-down').addClass('fa-chevron-up');
+        $(this).mixedView(1);
+      });
+      $.removeCookie('hidden_content');
+    }
+  }
+}
+function dismiss(button) {
+  var tbody = button.closest('tbody');
+  var table = tbody.parent();
+  var tile = table.parent();
+  var inactive = $.cookie('inactive_content');
+  tbody.hide();
+  if (table.find('tbody:visible').length>0) tile.show(); else tile.hide();
+  inactive = inactive==null ? [] : inactive.split(';');
+  inactive.push(tbody.attr('sort'));
+  $.cookie('inactive_content',inactive.join(';'),{expires:3650});
+}
+function contentMgmt() {
+  box = $("#iframe-popup");
+  box.html($("#templateContentMgmt").html().build());
+  box.dialog({
+    title: "Tile Management",
+    height: 350,
+    width: 900,
+    resizable: false,
+    modal: true,
+    show: {effect:'fade', duration:250},
+    hide: {effect:'fade', duration:250},
+    buttons: {
+      "Reset": function(){
+        $.removeCookie('db-box1');
+        $.removeCookie('db-box2');
+        $.removeCookie('db-box3');
+        $.removeCookie('inactive_content');
+        $.removeCookie('hidden_content');
+        box.dialog('close');
+        location.reload();
+      },
+      "All": function(){
+        $('input.checker').each(function(){$(this).prop('checked',true);});
+      },
+      "None": function(){
+        $('input.checker').each(function(){$(this).prop('checked',false);});
+      },
+      "Apply": function(){
+        hideShow();
+        box.dialog('close');
+      },
+      "Cancel": function(){
+        box.dialog('close');
+      }
+    }
+  });
+  $('.ui-dialog-titlebar-close').css({'display':'none'});
+  $('.ui-dialog-title').css({'text-align':'center','width':'100%','font-size':'1.8rem'});
+  $('.ui-dialog-content').css({'padding-top':'15px','vertical-align':'bottom'});
+  $('.ui-button-text').css({'padding':'0px 5px'});
+}
+
+var sortableHelper = function(e,ui){
+  ui.find('tr:first').children().each(function(){$(this).width($(this).width());});
+  return ui;
+};
+
+function LockButton() {
+  if ($.cookie('lockbutton') == null) {
+    $.cookie('lockbutton','lockbutton');
+    $('div.nav-item.LockButton a').prop('title',"Lock sortable items");
+    $('div.nav-item.LockButton b').removeClass('icon-u-lock green-text').addClass('icon-u-lock-open red-text');
+    $('i.tile').show();
+    $('tbody.sortable').css({'cursor':'move'});
+    $('div.nav-item.LockButton span').text("Lock sortable items");
+    $('#db-box1,#db-box2,#db-box3').sortable({connectWith:'#db-box1,#db-box2,#db-box3'});
+    $('table.dashboard').sortable({helper:sortableHelper,items:'.sortable',cursor:'grab',delay:100,opacity:0.5,zIndex:9999,forcePlaceholderSize:true,
+    receive:function(e,ui){
+      var table = ui.sender, index = [];
+      var tile = table.parent();
+      if (table.find('tbody:visible').length > 0) tile.show(); else tile.hide();
+      table.find('tbody').each(function(){index.push($(this).attr('sort'));});
+      $.cookie(table.prop('id'),index.join(';'),{expires:3650});
+    },
+    stop:function(e,ui){
+      var table = ui.item.parent(), index = [];
+      table.find('tbody').each(function(){index.push($(this).attr('sort'));});
+      $.cookie(table.prop('id'),index.join(';'),{expires:3650});
+    }});
+  } else {
+    $.removeCookie('lockbutton');
+    $('div.nav-item.LockButton a').prop('title',"Unlock sortable items");
+    $('div.nav-item.LockButton b').removeClass('icon-u-lock-open red-text').addClass('icon-u-lock green-text');
+    $('i.tile').hide();
+    $('tbody.sortable').css({'cursor':'default'});
+    $('div.nav-item.LockButton span').text("Unlock sortable items");
+    $('table.dashboard').sortable('destroy');
+  }
+}
+var dashboard = new NchanSubscriber('/sub/cpuload,update1,update2,update3',{subscriber:'websocket'});
+dashboard.on('message',function(msg,meta) {
+  switch (meta.id.channel()) {
+  case 0:
+    var ini = parseINI(msg);
+    // cpu load
+    $.each(ini,function(k,v) {
+      var load = v['host'];
+      var color = setColor(load, 90, 70);
+      if (k=='cpu') {
+        addChartCpu(load);
+        cpuchart.updateSeries([{data:cpu}]);
+      }
+      $('.'+k).text(load+'%');
+      $('#'+k).finish().animate({width:load+'%'},{step:function(){$('#'+k).css('overflow','visible').removeClass().addClass(color);}});
+    });
+    break;
+  case 1:
+    var part = msg.split('\1');
+    // memory & disk load
+    $.each(part[0].split('\0'),function(k,v) {
+      var load = v.slice(0,-1);
+      var color = k==1 ? '' : setColor(load,90,70);
+      $('.sys'+k).text(v);
+      $('#sys'+k).finish().animate({width:v},{step:function(){$('#sys'+k).css('overflow','visible').removeClass().addClass(color);}});
+    });
+    // stream counters (smb only)
+    var tag = $('.smb').is(':visible') ? 'smb' : $('.nfs').is(':visible') ? 'nfs' : '';
+    if (tag == 'smb') $.each(part[2].split('\0'),function(k,v) {$('#share'+(k+1)).html(v);});
+    break;
+  case 2:
+    if (!update2) break;
+    var part = msg.split('\1');
+    var data = part[0].split('\0');
+    var info = moreInfo(data,"Array");
+    // array devices
+    $('#array_list tr.updated').remove();
+    $('#array_list').append(data[0]).hideMe();
+    $('#array_info').parent().css('display',info?'':'none');
+    $('#array_info').html(info);
+    smartMenu('#array_list');
+    // pool devices
+    var text = part[1].split('\r');
+    for (var i=0,t; t=text[i]; i++) {
+      var data = t.split('\0');
+      var info = moreInfo(data,"Pool");
+      $('#pool_list'+i+' tr.updated').remove();
+      $('#pool_list'+i).append(t).hideMe();
+      $('#pool_info'+i).parent().css('display',info?'':'none');
+      $('#pool_info'+i).html(info);
+      smartMenu('#pool_list'+i);
+    }
+    // parity status
+    $('span.parity').html(part[3]);
+    // parity schedule
+    var data = part[4].split('\0');
+    $('#parity').html(data[0]);
+    $('#program').html(data[1]);
+    break;
+  case 3:
+    var part = msg.split('\1');
+    var ports = part[0].split('\n');
+    // rx & tx speeds
+    for (var i=0,port; port=ports[i]; i++) {
+      var data = port.split('\0');
+      if (data[0] == port_select) {
+        $('#inbound').text(data[1]);
+        $('#outbound').text(data[2]);
+        addChartNet(data[3], data[4]);
+        netchart.updateSeries([{data:rxd},{data:txd}]);
+        break;
+      }
+    }
+    // port counters
+    $.each(part[1].split('\0'),function(k,v) {$('#main'+k).html(v);});
+    $.each(part[2].split('\0'),function(k,v) {$('#port'+k).html(v);});
+    $.each(part[3].split('\0'),function(k,v) {$('#link'+k).html(v);});
+    break;
+  case 4:
+    // wireguard tunnels
+    let n = {};
+    var rows = msg.split('\0');
+    for (var i=0,row; row=rows[i]; i++) {
+      var info = row.split(';');
+      var vtun = info[0];
+      if (typeof n[vtun]=='undefined') n[vtun] = 0; else n[vtun]++;
+      if (info[1] == 0) {
+        $('span#'+vtun+'-hs-'+n[vtun]).text("not received");
+      } else if (info[1] > 86400) {
+        var d = parseInt(info[1]/86400);
+        var s = d==1 ? " day" : " days";
+        $('span#'+vtun+'-hs-'+n[vtun]).text(sprintf("%s ago",d+s));
+      } else {
+        var h = parseInt(info[1]/3600).pad();
+        var m = parseInt(info[1]/60%60).pad();
+        var s = parseInt(info[1]%60).pad();
+        $('span#'+vtun+'-hs-'+n[vtun]).text(sprintf("%s ago",h+':'+m+':'+s));
+      }
+      $('span#'+vtun+'-rx-'+n[vtun]).html('<span class="rx"><i class="fa fa-fw fa-arrow-down"></i>&nbsp;'+info[2]+'</span><span><i class="fa fa-fw fa-arrow-up"></i>&nbsp;'+info[3]+'</span>');
+    }
+    break;
+  }
+});
+
+$(function() {
+  initCharts();
+  cpuchart.render();
+  netchart.render();
+  addProperties();
+  dropdown('enter_share');
+  dropdown('enter_view');
+  startup = false;
+  dashboard.start();
+  update900();
+  toggleChart(true);
+  toggleCPU(true);
+  portMenu();
+  loadlist(true);
+  sortTables();
+  showContent();
+  $('#cpuline').val(cpuline);
+  $('#netline').val(netline);
+  $.removeCookie('lockbutton');
+  // remember latest graph values
+  $(window).on('beforeunload',function(e){
+    var data = {};
+    data.cpu = cpu.tail(cpuline);
+    data.rxd = rxd.tail(netline);
+    data.txd = txd.tail(netline);
+    $.post('/webGui/include/InitCharts.php',{cmd:'set',data:JSON.stringify(data)});
+  });
+});
+</script>
+</div></div>
+<div class="spinner fixed"></div>
+<form name="rebootNow" method="POST" action="/webGui/include/Boot.php"><input type="hidden" name="cmd" value="reboot"></form>
+<iframe id="progressFrame" name="progressFrame" frameborder="0"></iframe>
+
+<!--
+######
+Footer
+######
+-->
+<div id="footer"><span id="statusraid"><span id="statusbar"><span class='green strong'><i class='fa fa-play-circle'></i> Array Started</span></span></span><span id='countdown'></span><span id='user-notice' class='red-text'></span><span id='copyright'>Unraid&reg; webGui &copy;2024, Lime Technology, Inc. <a href='https://docs.unraid.net/category/manual' target='_blank' title="Online manual"><i class='fa fa-book'></i> manual</a></span></div><script>
+// Firefox specific workaround, not needed anymore in firefox version 100 and higher
+//if (typeof InstallTrigger!=='undefined') $('#nav-block').addClass('mozilla');
+
+function parseINI(data){
+  var regex = {
+    section: /^\s*\[\s*\"*([^\]]*)\s*\"*\]\s*$/,
+    param: /^\s*([^=]+?)\s*=\s*\"*(.*?)\s*\"*$/,
+    comment: /^\s*;.*$/
+  };
+  var value = {};
+  var lines = data.split(/[\r\n]+/);
+  var section = null;
+  lines.forEach(function(line) {
+    if (regex.comment.test(line)) {
+      return;
+    } else if (regex.param.test(line)) {
+      var match = line.match(regex.param);
+      if (section) {
+        value[section][match[1]] = match[2];
+      } else {
+        value[match[1]] = match[2];
+      }
+    } else if (regex.section.test(line)) {
+      var match = line.match(regex.section);
+      value[match[1]] = {};
+      section = match[1];
+    } else if (line.length==0 && section) {
+      section = null;
+    };
+  });
+  return value;
+}
+// unraid animated logo
+var unraid_logo = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 133.52 76.97" class="unraid_mark"><defs><linearGradient id="unraid_logo" x1="23.76" y1="81.49" x2="109.76" y2="-4.51" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e32929"/><stop offset="1" stop-color="#ff8d30"/></linearGradient></defs><path d="m70,19.24zm57,0l6.54,0l0,38.49l-6.54,0l0,-38.49z" fill="url(#unraid_logo)" class="unraid_mark_9"/><path d="m70,19.24zm47.65,11.9l-6.55,0l0,-23.79l6.55,0l0,23.79z" fill="url(#unraid_logo)" class="unraid_mark_8"/><path d="m70,19.24zm31.77,-4.54l-6.54,0l0,-14.7l6.54,0l0,14.7z" fill="url(#unraid_logo)" class="unraid_mark_7"/><path d="m70,19.24zm15.9,11.9l-6.54,0l0,-23.79l6.54,0l0,23.79z" fill="url(#unraid_logo)" class="unraid_mark_6"/><path d="m63.49,19.24l6.51,0l0,38.49l-6.51,0l0,-38.49z" fill="url(#unraid_logo)" class="unraid_mark_5"/><path d="m70,19.24zm-22.38,26.6l6.54,0l0,23.78l-6.54,0l0,-23.78z" fill="url(#unraid_logo)" class="unraid_mark_4"/><path d="m70,19.24zm-38.26,43.03l6.55,0l0,14.73l-6.55,0l0,-14.73z" fill="url(#unraid_logo)" class="unraid_mark_3"/><path d="m70,19.24zm-54.13,26.6l6.54,0l0,23.78l-6.54,0l0,-23.78z" fill="url(#unraid_logo)" class="unraid_mark_2"/><path d="m70,19.24zm-63.46,38.49l-6.54,0l0,-38.49l6.54,0l0,38.49z" fill="url(#unraid_logo)" class="unraid_mark_1"/></svg>';
+
+var defaultPage = new NchanSubscriber('/sub/session,var,notify',{subscriber:'websocket'});
+defaultPage.on('message', function(msg,meta) {
+  switch (meta.id.channel()) {
+  case 0:
+    // stale session, force login
+    if (csrf_token != msg) location.replace('/');
+    break;
+  case 1:
+    // message field in footer
+    var ini = parseINI(msg);
+    switch (ini['fsState']) {
+      case 'Stopped'   : var status = "<span class='red strong'><i class='fa fa-stop-circle'></i> Array Stopped</span>"; break;
+      case 'Started'   : var status = "<span class='green strong'><i class='fa fa-play-circle'></i> Array Started</span>"; break;
+      case 'Formatting': var status = "<span class='green strong'><i class='fa fa-play-circle'></i> Array Started</span>&bullet;<span class='orange strong'>Formatting device(s)</span>"; break;
+      default          : var status = "<span class='orange strong'><i class='fa fa-pause-circle'></i> "+_('Array '+ini['fsState'])+"</span>";
+    }
+    if (ini['mdResyncPos'] > 0) {
+      var resync = ini['mdResyncAction'].split(/\s+/);
+      switch (resync[0]) {
+        case 'recon': var action = resync[1]=='P' ? "Parity-Sync" : "Data-Rebuild"; break;
+        case 'check': var action = resync.length>1 ? "Parity-Check" : "Read-Check"; break;
+        case 'clear': var action = "Disk-Clear"; break;
+        default     : var action = '';
+      }
+      action += " "+(ini['mdResyncPos']/(ini['mdResyncSize']/100+1)).toFixed(1)+" %";
+      status += "&bullet;<span class='orange strong'>"+action.replace('.','.');
+      if (ini['mdResyncDt']==0) status += " &bullet; Paused";
+      status += "</span>";
+    }
+    if (ini['fsProgress']) status += "&bullet;<span class='blue strong'>"+_(ini['fsProgress'])+"</span>";
+    $('#statusbar').html(status);
+    break;
+  case 2:
+    // notifications
+    var bell1 = 0, bell2 = 0, bell3 = 0;
+    $.each($.parseJSON(msg), function(i, notify) {
+      switch (notify.importance) {
+        case 'alert'  : bell1++; break;
+        case 'warning': bell2++; break;
+        case 'normal' : bell3++; break;
+      }
+      if (notify.show) {
+        $.jGrowl(notify.subject+'<br>'+notify.description, {
+          group: notify.importance,
+          header: notify.event+': '+notify.timestamp,
+          theme: notify.file,
+          beforeOpen: function(e,m,o){if ($('div.jGrowl-notification').hasClass(notify.file)) return(false);},
+          afterOpen: function(e,m,o){if (notify.link) $(e).css('cursor','pointer');},
+          click: function(e,m,o){if (notify.link) location.replace(notify.link);},
+          close: function(e,m,o){$.post('/webGui/include/Notify.php',{cmd:'hide',file:"/tmp/notifications/unread/"+notify.file,csrf_token:csrf_token});}
+        });
+      }
+    });
+    $('#bell').removeClass('red-orb yellow-orb green-orb').prop('title',"Alerts ["+bell1+']\n'+"Warnings ["+bell2+']\n'+"Notices ["+bell3+']');;
+    if (bell1) $('#bell').addClass('red-orb'); else
+    if (bell2) $('#bell').addClass('yellow-orb'); else
+    if (bell3) $('#bell').addClass('green-orb');
+
+    if (bell1) $('#dropdown-board li.dropdown-submenu:eq(0)').removeClass('disabled'); else $('#dropdown-board li.dropdown-submenu:eq(0)').addClass('disabled').find('.dropdown-menu').hide();
+    if (bell2) $('#dropdown-board li.dropdown-submenu:eq(1)').removeClass('disabled'); else $('#dropdown-board li.dropdown-submenu:eq(1)').addClass('disabled').find('.dropdown-menu').hide();
+    if (bell3) $('#dropdown-board li.dropdown-submenu:eq(2)').removeClass('disabled'); else $('#dropdown-board li.dropdown-submenu:eq(2)').addClass('disabled').find('.dropdown-menu').hide();
+    break;
+  }
+});
+
+var nchan_plugins = new NchanSubscriber('/sub/plugins',{subscriber:'websocket'});
+nchan_plugins.on('message', function(data) {
+  if (!data || openDone(data)) return;
+  var box = $('pre#swaltext');
+  const text = box.html().split('<br>');
+  if (data.slice(-1) == '\r') {
+    text[text.length-1] = data.slice(0,-1);
+  } else {
+    text.push(data.slice(0,-1));
+  }
+  box.html(text.join('<br>')).scrollTop(box[0].scrollHeight);
+});
+
+var nchan_docker = new NchanSubscriber('/sub/docker',{subscriber:'websocket'});
+nchan_docker.on('message', function(data) {
+  if (!data || openDone(data)) return;
+  var box = $('pre#swaltext');
+  data = data.split('\0');
+  switch (data[0]) {
+  case 'addLog':
+    var rows = document.getElementsByClassName('logLine');
+    if (rows.length) {
+      var row = rows[rows.length-1];
+      row.innerHTML += data[1]+'<br>';
+    }
+    break;
+  case 'progress':
+    var rows = document.getElementsByClassName('progress-'+data[1]);
+    if (rows.length) {
+      rows[rows.length-1].textContent = data[2];
+    }
+    break;
+  case 'addToID':
+    var rows = document.getElementById(data[1]);
+    if (rows === null) {
+      rows = document.getElementsByClassName('logLine');
+      if (rows.length) {
+        var row = rows[rows.length-1];
+        row.innerHTML += '<span id="'+data[1]+'">IMAGE ID ['+data[1]+']: <span class="content">'+data[2]+'</span><span class="progress-'+data[1]+'"></span>.</span><br>';
+      }
+    } else {
+      var rows_content = rows.getElementsByClassName('content');
+      if (!rows_content.length || rows_content[rows_content.length-1].textContent != data[2]) {
+        rows.innerHTML += '<span class="content">'+data[2]+'</span><span class="progress-'+data[1]+'"></span>.';
+      }
+    }
+    break;
+  case 'show_Wait':
+    progress_span[data[1]] = document.getElementById('wait-'+data[1]);
+    progress_dots[data[1]] = setInterval(function(){if (((progress_span[data[1]].innerHTML += '.').match(/\./g)||[]).length > 9) progress_span[data[1]].innerHTML = progress_span[data[1]].innerHTML.replace(/\.+$/,'');},500);
+    break;
+  case 'stop_Wait':
+    clearInterval(progress_dots[data[1]]);
+    progress_span[data[1]].innerHTML = '';
+    break;
+  default:
+    box.html(box.html()+data[0]);
+    break;
+  }
+  box.scrollTop(box[0].scrollHeight);
+});
+
+var backtotopoffset = 250;
+var backtotopduration = 500;
+$(window).scroll(function() {
+  if ($(this).scrollTop() > backtotopoffset) {
+    $('.back_to_top').fadeIn(backtotopduration);
+  } else {
+    $('.back_to_top').fadeOut(backtotopduration);
+  }
+  var top = $('div#header').height()-1; // header height has 1 extra pixel to cover overlap
+  $('div#menu').css($(this).scrollTop() > top ? {position:'fixed',top:'0'} : {position:'absolute',top:top+'px'});
+  // banner
+  $('div.upgrade_notice').css($(this).scrollTop() > 24 ? {position:'fixed',top:'0'} : {position:'absolute',top:'24px'});
+});
+$('.back_to_top').click(function(event) {
+  event.preventDefault();
+  $('html,body').animate({scrollTop:0},backtotopduration);
+  return false;
+});
+
+$.post('/webGui/include/Notify.php',{cmd:'init',csrf_token:csrf_token});
+$(function() {
+  defaultPage.start();
+  $('div.spinner.fixed').html(unraid_logo);
+  setTimeout(function(){$('div.spinner').not('.fixed').each(function(){$(this).html(unraid_logo);});},500); // display animation if page loading takes longer than 0.5s
+  shortcut.add('F1',function(){HelpButton();});
+  $('input[value="Apply"],input[value="Apply"],input[name="cmdEditShare"],input[name="cmdUserEdit"]').prop('disabled',true);
+  $('form').find('select,input[type=text],input[type=number],input[type=password],input[type=checkbox],input[type=radio],input[type=file],textarea').not('.lock').each(function(){$(this).on('input change',function() {
+    var form = $(this).parentsUntil('form').parent();
+    form.find('input[value="Apply"],input[value="Apply"],input[name="cmdEditShare"],input[name="cmdUserEdit"]').not('input.lock').prop('disabled',false);
+    form.find('input[value="Done"],input[value="Done"]').not('input.lock').val("Reset").prop('onclick',null).off('click').click(function(){formHasUnsavedChanges=false;refresh(form.offset().top);});
+  });});
+  // add leave confirmation when form has changed without applying (opt-in function)
+  if ($('form.js-confirm-leave').length>0) {
+    $('form.js-confirm-leave').on('change',function(e){formHasUnsavedChanges=true;}).on('submit',function(e){formHasUnsavedChanges=false;});
+    $(window).on('beforeunload',function(e){if (formHasUnsavedChanges) return '';}); // note: the browser creates its own popup window and warning message
+  }
+  // form parser: add escapeQuotes protection
+  $('form').each(function(){
+    var action = $(this).prop('action').actionName();
+    if (action=='update.htm' || action=='update.php') {
+      var onsubmit = $(this).attr('onsubmit')||'';
+      $(this).attr('onsubmit','clearTimeout(timers.flashReport);escapeQuotes(this);'+onsubmit);
+    }
+  });
+  var top = ($.cookie('top')||0) - $('.tabs').offset().top - 75;
+  if (top>0) {$('html,body').scrollTop(top);}
+  $.removeCookie('top');
+  if ($.cookie('addAlert') != null) bannerAlert(addAlert.text,addAlert.cmd,addAlert.plg,addAlert.func);
+  var opts = [];
+  context.settings({above:false});
+  opts.push({header:"Notifications"});
+  opts.push({text:"Alerts",icon:'fa-bell-o',subMenu:[{text:"View",icon:'fa-folder-open-o',action:function(e){e.preventDefault();openNotifier('alert');}},{text:"History",icon:'fa-file-text-o',action:function(e){e.preventDefault();viewHistory('alert');}},{text:"Acknowledge",icon:'fa-check-square-o',action:function(e){e.preventDefault();closeNotifier('alert');}}]});
+  opts.push({text:"Warnings",icon:'fa-star-o',subMenu:[{text:"View",icon:'fa-folder-open-o',action:function(e){e.preventDefault();openNotifier('warning');}},{text:"History",icon:'fa-file-text-o',action:function(e){e.preventDefault();viewHistory('warning');}},{text:"Acknowledge",icon:'fa-check-square-o',action:function(e){e.preventDefault();closeNotifier('warning');}}]});
+  opts.push({text:"Notices",icon:'fa-sun-o',subMenu:[{text:"View",icon:'fa-folder-open-o',action:function(e){e.preventDefault();openNotifier('normal');}},{text:"History",icon:'fa-file-text-o',action:function(e){e.preventDefault();viewHistory('normal');}},{text:"Acknowledge",icon:'fa-check-square-o',action:function(e){e.preventDefault();closeNotifier('normal');}}]});
+  context.attach('#board',opts);
+  if (location.pathname.search(/\/(AddVM|UpdateVM|AddContainer|UpdateContainer)/)==-1) {
+    $('blockquote.inline_help').each(function(i) {
+      $(this).attr('id','helpinfo'+i);
+      var pin = $(this).prev();
+      if (!pin.prop('nodeName')) pin = $(this).parent().prev();
+      while (pin.prop('nodeName') && pin.prop('nodeName').search(/(table|dl)/i)==-1) pin = pin.prev();
+      pin.find('tr:first,dt:last').each(function() {
+        var node = $(this);
+        var name = node.prop('nodeName').toLowerCase();
+        if (name=='dt') {
+          while (!node.html() || node.html().search(/(<input|<select|nbsp;)/i)>=0 || name!='dt') {
+            if (name=='dt' && node.is(':first-of-type')) break;
+            node = node.prev();
+            name = node.prop('nodeName').toLowerCase();
+          }
+          node.css('cursor','help').click(function(){$('#helpinfo'+i).toggle('slow');});
+        } else {
+          if (node.html() && (name!='tr' || node.children('td:first').html())) node.css('cursor','help').click(function(){$('#helpinfo'+i).toggle('slow');});
+        }
+      });
+    });
+  }
+  $('form').append($('<input>').attr({type:'hidden', name:'csrf_token', value:csrf_token}));
+});
+</script>
+</body>
+</html>
