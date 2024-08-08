@@ -95,7 +95,7 @@ export async function getUnraidDetails(
 ) {
   for (const ip of Object.keys(servers)) {
     const server = servers[ip];
-    console.log(`hello ${ip}`);
+    console.log(`trying ${ip}`);
 
     try {
       if (!serverAuth[ip]) {
@@ -113,6 +113,8 @@ export async function getUnraidDetails(
         await getDockers(server, serverAuth, ip);
       }
     } catch (error) {
+      console.log(error);
+
       console.log("in error");
     }
   }
@@ -169,7 +171,6 @@ async function logInToUrl(url: string, data: any, ip: string) {
       error.response?.headers["set-cookie"] &&
       error.response.headers["set-cookie"][0]
     ) {
-      console.log("err1");
       authCookies[ip] = error.response.headers["set-cookie"][0];
     } else if (error.response?.headers.location) {
       return logInToUrl(
@@ -244,39 +245,39 @@ const getServerDetails = async (
   serverAuth: string,
   ip: string
 ) => {
-  if (server[ip].serverDetails === undefined) {
-    server[ip].serverDetails = {};
+  if (server.serverDetails === undefined) {
+    server.serverDetails = {};
   }
 
   if (!serverAuth[ip]) {
-    server[ip].serverDetails.on = false;
+    server.serverDetails.on = false;
     return;
   }
 
-  server[ip].serverDetails =
-    (await scrapeHTML(ip, serverAuth)) || server[ip].serverDetails;
-  server[ip].serverDetails =
+  server.serverDetails =
+    (await scrapeHTML(ip, serverAuth)) || server.serverDetails;
+  server.serverDetails =
     {
       ...(await scrapeMainHTML(ip, serverAuth)),
-      ...server[ip].serverDetails
-    } || server[ip].serverDetails;
+      ...server.serverDetails
+    } || server.serverDetails;
 
-  server[ip].serverDetails.on = server[ip].status === "online";
+  server.serverDetails.on = server.status === "online";
   updateFile(server, ip, "serverDetails");
 
   // vm not enabled, we clear the object
-  if (!server[ip].serverDetails.vmEnabled) {
-    delete server[ip].vm;
-    delete server[ip].pciDetails;
-    delete server[ip].usbDetails;
+  if (!server.serverDetails.vmEnabled) {
+    delete server.vm;
+    delete server.pciDetails;
+    delete server.usbDetails;
     updateFile(server, ip, "vm");
     updateFile(server, ip, "pciDetails");
     updateFile(server, ip, "usbDetails");
   }
 
   // docker not enabled, we clear the object
-  if (!server[ip].serverDetails.dockerEnabled) {
-    delete server[ip].docker;
+  if (!server.serverDetails.dockerEnabled) {
+    delete server.docker;
     updateFile(server, ip, "docker");
   }
 };
