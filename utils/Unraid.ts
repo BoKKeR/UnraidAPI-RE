@@ -52,7 +52,7 @@ export async function getImage(servers: RootServerJSONConfig, res, path) {
       )
       .toString()
   );
-  await logIn(servers, serverAuth);
+  await logIn(servers, serverAuth); // TODO: fix
   let sent = false;
 
   Object.keys(servers).forEach((server) => {
@@ -136,16 +136,12 @@ async function logIn(server: ServerJSONConfig, serverAuth: string, ip: string) {
   data.append("username", details.substring(0, details.indexOf(":")));
   data.append("password", details.substring(details.indexOf(":") + 1));
 
-  try {
-    await logInToUrl(
-      `${ip.includes("http") ? ip : `http://${ip}`}/login`,
-      data,
-      ip
-    );
-    server.status = "online";
-  } catch (error) {
-    console.log(`Failed in logIn for ${ip}`);
-  }
+  await logInToUrl(
+    `${ip.includes("http") ? ip : `http://${ip}`}/login`,
+    data,
+    ip
+  );
+  server.status = "online";
 }
 
 async function logInToUrl(url: string, data: any, ip: string) {
@@ -178,6 +174,8 @@ async function logInToUrl(url: string, data: any, ip: string) {
         data,
         error.response.headers.location
       );
+    } else {
+      throw new Error(`Failed to fetch login for ${ip}`);
     }
   }
 }

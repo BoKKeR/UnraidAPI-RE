@@ -390,6 +390,8 @@ function updateMQTT(client) {
     } catch (e) {
       console.log(e);
     }
+    console.log("calling unraid-details");
+
     getUnraidDetails(servers, keys);
 
     const timer = 1000;
