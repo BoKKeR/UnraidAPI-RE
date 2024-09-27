@@ -606,13 +606,13 @@ export default {
       });
     },
     downloadXML(vm) {
-      this.download(vm.name + ".xml", vm.xml);
+      this.download(`${vm.name}.xml`, vm.xml);
     },
     download(filename, text) {
       var element = document.createElement("a");
       element.setAttribute(
         "href",
-        "data:text/plain;charset=utf-8," + encodeURIComponent(text)
+        `data:text/plain;charset=utf-8,${encodeURIComponent(text)}`
       );
       element.setAttribute("download", filename);
 
