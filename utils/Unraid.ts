@@ -772,7 +772,7 @@ export async function getCSRFToken(server: string, auth: string) {
   try {
     const response = await axios({
       method: "get",
-      url: `${server.includes("http") ? server : `http://${server}`}/Dashboard`,
+      url: `${server}/Dashboard`,
       headers: {
         Authorization: `Basic ${auth}`,
         Cookie: authCookies[server]
@@ -824,7 +824,7 @@ export function changeArrayState(
 ) {
   return axios({
     method: "POST",
-    url: `${server.includes("http") ? server : `http://${server}`}/update.htm`,
+    url: `${server}/update.htm`,
     headers: {
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
