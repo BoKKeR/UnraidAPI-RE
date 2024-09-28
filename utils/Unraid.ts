@@ -861,9 +861,7 @@ export function changeServerState(
     case "shutdown":
       return axios({
         method: "POST",
-        url: `${
-          server.includes("http") ? server : `http://${server}`
-        }/webGui/include/Boot.php`,
+        url: `${server}/webGui/include/Boot.php`,
         headers: {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -883,9 +881,7 @@ export function changeServerState(
     case "reboot":
       return axios({
         method: "POST",
-        url: `${
-          server.includes("http") ? server : `http://${server}`
-        }/webGui/include/Boot.php`,
+        url: `${server}/webGui/include/Boot.php`,
         headers: {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -905,9 +901,7 @@ export function changeServerState(
     case "move":
       return axios({
         method: "POST",
-        url: `${
-          server.includes("http") ? server : `http://${server}`
-        }/update.htm`,
+        url: `${server}/update.htm`,
         headers: {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -927,9 +921,7 @@ export function changeServerState(
     case "check":
       return axios({
         method: "POST",
-        url: `${
-          server.includes("http") ? server : `http://${server}`
-        }/update.htm`,
+        url: `${server}/update.htm`,
         headers: {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -949,9 +941,7 @@ export function changeServerState(
     case "check-cancel":
       return axios({
         method: "POST",
-        url: `${
-          server.includes("http") ? server : `http://${server}`
-        }/update.htm`,
+        url: `${server}/update.htm`,
         headers: {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -971,9 +961,7 @@ export function changeServerState(
     case "sleep":
       return axios({
         method: "GET",
-        url: `${
-          server.includes("http") ? server : `http://${server}`
-        }/plugins/dynamix.s3.sleep/include/SleepMode.php`,
+        url: `${server}/plugins/dynamix.s3.sleep/include/SleepMode.php`,
         headers: {
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -1008,9 +996,7 @@ export async function changeVMState(
   }
   return axios({
     method: "POST",
-    url: `${
-      server.includes("http") ? server : `http://${server}`
-    }/plugins/dynamix.vm.manager/include/VMajax.php`,
+    url: `${server}/plugins/dynamix.vm.manager/include/VMajax.php`,
     headers: {
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -1054,9 +1040,7 @@ export async function changeDockerState(
   }
   return axios({
     method: "POST",
-    url: `${
-      server.includes("http") ? server : `http://${server}`
-    }/plugins/dynamix.docker.manager/include/Events.php`,
+    url: `${server}/plugins/dynamix.docker.manager/include/Events.php`,
     headers: {
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
