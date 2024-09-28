@@ -401,9 +401,7 @@ async function getVMs(
   try {
     const response = await axios({
       method: "get",
-      url: `${
-        ip.includes("http") ? ip : `http://${ip}`
-      }/plugins/dynamix.vm.manager/include/VMMachines.php`,
+      url: `${ip}/plugins/dynamix.vm.manager/include/VMMachines.php`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
         Cookie: authCookies[ip] ? authCookies[ip] : ""
@@ -531,9 +529,7 @@ async function getDockers(
   try {
     const response = await axios({
       method: "get",
-      url: `${
-        ip.includes("http") ? ip : `http://${ip}`
-      }/plugins/dynamix.docker.manager/include/DockerContainers.php`,
+      url: `${ip}/plugins/dynamix.docker.manager/include/DockerContainers.php`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
         Cookie: authCookies[ip] ? authCookies[ip] : ""
@@ -1471,9 +1467,7 @@ export async function requestChange(
 ) {
   return axios({
     method: "POST",
-    url: `${
-      ip.includes("http") ? ip : `http://${ip}`
-    }/plugins/dynamix.vm.manager/templates/Custom.form.php`,
+    url: `${ip}/plugins/dynamix.vm.manager/templates/Custom.form.php`,
     headers: {
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
