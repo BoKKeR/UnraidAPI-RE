@@ -44,6 +44,13 @@ axios.defaults.httpsAgent = new https.Agent({
 // Add a request interceptor
 axios.interceptors.request.use(
   (request) => {
+    const url = request.url;
+
+    // Check if the URL does not start with 'http://' or 'https://'
+    if (url && !/^https?:\/\//i.test(url)) {
+      request.url = `http://${url}`;
+    }
+
     // Log the request URL
     logger.debug(`Request URL: ${request.url}`);
     return request;
