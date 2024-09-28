@@ -20,7 +20,7 @@ import {
 } from "~/types/server";
 import { DockerDetail, UsbData } from "~/types/json-server";
 import env from "./../constants/env";
-import logger from "~/utils/logger";
+import logger from "../utils/logger";
 
 let retry;
 
