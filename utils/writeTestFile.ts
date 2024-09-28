@@ -1,4 +1,5 @@
 import fs from "fs";
+import logger from "./logger";
 
 const writeTestFile = (data: string, name: string, override?: boolean) => {
   if (process.env.WRITE_HTML_OUTPUT === "true" || override) {
@@ -12,7 +13,7 @@ const writeTestFile = (data: string, name: string, override?: boolean) => {
           if (err) {
             console.error(err);
           }
-          console.log(`${fullPath} written successfully`);
+          logger.info(`${fullPath} written successfully`);
         });
       }
     });

@@ -32,6 +32,7 @@ import { enableDockerFetching } from "./enableDockerFetching";
 import extractUSBData from "./extractUsbData";
 import fetch from "node-fetch";
 import FormData from "form-data";
+import logger from "./logger";
 
 axios.defaults.timeout = 3000;
 axios.defaults.withCredentials = true;
@@ -44,8 +45,8 @@ axios.defaults.httpsAgent = new https.Agent({
 axios.interceptors.request.use(
   (request) => {
     // Log the request URL
-    console.log(`Request URL: ${request.url}`);
-    return request; // Don't forget to return the request or it will hang
+    logger.debug(`Request URL: ${request.url}`);
+    return request;
   },
   (error) => {
     return Promise.reject(error);
@@ -100,7 +101,7 @@ export async function getImage(
         });
       })
       .catch((err) => {
-        console.log(err);
+        logger.error(err);
       });
   });
 }
@@ -131,7 +132,7 @@ export async function getUnraidDetails(
         await getDockers(server, serverAuth, ip);
       }
     } catch (error) {
-      console.log(error);
+      logger.error(error);
     }
   }
 }
@@ -178,7 +179,7 @@ async function logInToUrl(url: string, data: any, ip: string) {
 
     if (response.headers["set-cookie"] && response.headers["set-cookie"][0]) {
       authCookies[ip] = response.headers["set-cookie"][0];
-      console.log(`Updating auth cookie for ${ip} ${authCookies[ip]}`);
+      logger.info(`Updating auth cookie for ${ip} ${authCookies[ip]}`);
     }
   } catch (error) {
     if (
@@ -186,7 +187,7 @@ async function logInToUrl(url: string, data: any, ip: string) {
       error.response.headers["set-cookie"][0]
     ) {
       authCookies[ip] = error.response.headers["set-cookie"][0];
-      console.log(`Updating auth cookie for ${ip} ${authCookies[ip]}`);
+      logger.info(`Updating auth cookie for ${ip} ${authCookies[ip]}`);
     } else if (error.response?.headers.location) {
       return logInToUrl(
         error.response.headers.location,
@@ -243,13 +244,13 @@ async function getUSBDetails(server: ServerJSONConfig, serverAuth, ip: string) {
 
       updateFile(server, ip, "usbDetails");
     } catch (e) {
-      console.log(`Get USB Details for ip: ${ip} Failed`);
+      logger.info(`Get USB Details for ip: ${ip} Failed`);
       if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
         callFailed(ip, 404);
       }
-      console.log(e.message);
+      logger.error(e.message);
       if (e.message.includes("ETIMEDOUT")) {
         updateFile(server, ip, "status");
       }
@@ -298,7 +299,7 @@ const getServerDetails = async (
     !server.serverDetails.motherboard &&
     !server.serverDetails.arrayProtection
   ) {
-    console.log("Possibly expired cookies, clearing cookies for next call");
+    logger.info("Possibly expired cookies, clearing cookies for next call");
     authCookies[ip] = undefined;
   }
 
@@ -329,7 +330,7 @@ async function scrapeHTML(ip: string, serverAuth: any) {
 
     return details;
   } catch (e) {
-    console.log(
+    logger.info(
       `Get Dashboard Details for ip: ${ip} Failed with status code: ${e.response?.status}`
     );
     if (e.response?.status) {
@@ -337,7 +338,7 @@ async function scrapeHTML(ip: string, serverAuth: any) {
     } else {
       callFailed(ip, 404);
     }
-    console.log(e.message);
+    logger.error(e.message);
   }
 }
 
@@ -373,13 +374,13 @@ async function scrapeMainHTML(ip: string, serverAuth: string) {
       dockerEnabled: enableDockerFetching(response.data)
     };
   } catch (e) {
-    console.log(`Get Main Details for ip: ${ip} Failed`);
+    logger.info(`Get Main Details for ip: ${ip} Failed`);
     if (e.response?.status) {
       callFailed(ip, e.response.status);
     } else {
       callFailed(ip, 404);
     }
-    console.log(e.message);
+    logger.error(e.message);
   }
 }
 
@@ -412,7 +413,7 @@ async function getVMs(
       try {
         server.vm.extras = parts[1];
       } catch (error) {
-        console.log("Error in servers[ip].vm.extras = parts[1];");
+        logger.info("Error in servers[ip].vm.extras = parts[1];");
       }
     } else {
       htmlDetails = response.data.toString();
@@ -422,18 +423,18 @@ async function getVMs(
     try {
       server.vm.details = await processVMResponse(details, ip, serverAuth[ip]);
     } catch (error) {
-      console.log("Error processing VM response for ip:", ip);
+      logger.error("Error processing VM response for ip:", ip);
     }
 
     updateFile(server, ip, "vm");
   } catch (e) {
-    console.log(`Get VM Details for ip: ${ip} Failed`);
+    logger.error(`Get VM Details for ip: ${ip} Failed`);
     if (e.response?.status) {
       callFailed(ip, e.response.status);
     } else {
       callFailed(ip, 404);
     }
-    console.log(e.message);
+    logger.error(e.message);
   }
 }
 
@@ -503,10 +504,10 @@ function processDockerResponse(details) {
             }
           }
         } catch (e) {
-          console.log(
+          logger.error(
             "There was a problem retrieving a field for a docker image"
           );
-          console.log(e.message);
+          logger.error(e.message);
         }
       });
     }
@@ -537,13 +538,13 @@ async function getDockers(
     server.docker.details = await processDockerResponse(details);
     updateFile(server, ip, "docker");
   } catch (e) {
-    console.log(`Get Docker Details for ip: ${ip} Failed`);
+    logger.error(`Get Docker Details for ip: ${ip} Failed`);
     if (e.response?.status) {
       callFailed(ip, e.response.status);
     } else {
       callFailed(ip, 404);
     }
-    console.log(e.message);
+    logger.error(e.message);
   }
 }
 
@@ -553,7 +554,7 @@ function updateFile(server: ServerJSONConfig, ip: string, tag: string) {
     const rawdata = fs.readFileSync("config/servers.json");
     oldServers = JSON.parse(rawdata.toString());
   } catch (e) {
-    console.log(e);
+    logger.error(e);
   } finally {
     if (!oldServers[ip]) {
       oldServers[ip] = {};
@@ -775,13 +776,13 @@ export async function getCSRFToken(server: string, auth: string) {
     callSucceeded(server);
     return extractCsrfToken(response.data);
   } catch (e) {
-    console.log(`Get CSRF Token for server: ${server} Failed`);
+    logger.error(`Get CSRF Token for server: ${server} Failed`);
     if (e.response?.status) {
       callFailed(server, e.response.status);
     } else {
       callFailed(server, 404);
     }
-    console.log(e.message);
+    logger.error(e.message);
   }
 }
 
@@ -835,13 +836,13 @@ export function changeArrayState(
       return response.data;
     })
     .catch((e) => {
-      console.log(`Change Array State for ip: ${server} Failed`);
+      logger.error(`Change Array State for ip: ${server} Failed`);
       if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
         callFailed(server, 404);
       }
-      console.log(e.message);
+      logger.error(e.message);
     });
 }
 
@@ -871,7 +872,7 @@ export function changeServerState(
           return { success: true };
         })
         .catch((e) => {
-          console.log(e);
+          logger.error(e);
           return { success: false };
         });
     case "reboot":
@@ -893,7 +894,7 @@ export function changeServerState(
           return { success: true };
         })
         .catch((e) => {
-          console.log(e);
+          logger.error(e);
           return { success: false };
         });
     case "move":
@@ -915,7 +916,7 @@ export function changeServerState(
           return { success: true };
         })
         .catch((e) => {
-          console.log(e);
+          logger.error(e);
           return { success: false };
         });
     case "check":
@@ -937,7 +938,7 @@ export function changeServerState(
           return { success: true };
         })
         .catch((e) => {
-          console.log(e);
+          logger.error(e);
           return { success: false };
         });
     case "check-cancel":
@@ -959,7 +960,7 @@ export function changeServerState(
           return { success: true };
         })
         .catch((e) => {
-          console.log(e);
+          logger.error(e);
           return { success: false };
         });
     case "sleep":
@@ -979,11 +980,11 @@ export function changeServerState(
           return { success: true };
         })
         .catch((e) => {
-          console.log(e);
+          logger.error(e);
           return { success: false };
         });
     default:
-      console.log(
+      logger.error(
         "Looks like you tried to change the server state but without describing how."
       );
   }
@@ -998,7 +999,7 @@ export async function changeVMState(
 ) {
   if (!token) {
     token = (await getCSRFToken(server, auth)) as string;
-    console.log(`Got new CSRF_token: ${token}`);
+    console.info(`Got new CSRF_token: ${token}`);
   }
   return axios({
     method: "POST",
@@ -1025,13 +1026,13 @@ export async function changeVMState(
       return response.data;
     })
     .catch((e) => {
-      console.log(`Change VM State for ip: ${server} Failed`);
+      logger.error(`Change VM State for ip: ${server} Failed`);
       if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
         callFailed(server, 404);
       }
-      console.log(e.message);
+      logger.error(e.message);
     });
 }
 
@@ -1044,7 +1045,7 @@ export async function changeDockerState(
 ) {
   if (!token) {
     token = (await getCSRFToken(server, auth)) as string;
-    console.log(`Got new CSRF_token: ${token}`);
+    logger.info(`Got new CSRF_token: ${token}`);
   }
   return axios({
     method: "POST",
@@ -1074,13 +1075,13 @@ export async function changeDockerState(
       return response.data;
     })
     .catch((e) => {
-      console.log(`Change Docker State for ip: ${server} Failed`);
+      logger.error(`Change Docker State for ip: ${server} Failed`);
       if (e.response?.status) {
         callFailed(server, e.response.status);
       } else {
         callFailed(server, 404);
       }
-      console.log(e.message);
+      logger.error(e.message);
     });
 }
 
@@ -1108,13 +1109,13 @@ export function gatherDetailsFromEditVM(
       return extractVMDetails(vmObject, response.data, ip);
     })
     .catch((e) => {
-      console.log(`Get VM Edit details for ip: ${ip} Failed`);
+      logger.error(`Get VM Edit details for ip: ${ip} Failed`);
       if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
         callFailed(ip, 404);
       }
-      console.log(e.message);
+      logger.error(e.message);
       vmObject.edit = servers[ip].vm.details[id].edit;
       return vmObject;
     });
@@ -1478,13 +1479,13 @@ export async function requestChange(
       return response.data;
     })
     .catch((e) => {
-      console.log(`Make Edit for ip: ${ip} Failed`);
+      logger.error(`Make Edit for ip: ${ip} Failed`);
       if (e.response?.status) {
         callFailed(ip, e.response.status);
       } else {
         callFailed(ip, 404);
       }
-      console.log(e.message);
+      logger.error(e.message);
     });
 }
 
