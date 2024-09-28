@@ -236,7 +236,7 @@ async function getUSBDetails(server: ServerJSONConfig, serverAuth, ip: string) {
         }`,
         headers: {
           Authorization: `Basic ${serverAuth[ip]}`,
-          Cookie: authCookies[ip] ? authCookies[ip] : ""
+          Cookie: authCookies[ip]
         }
       });
 
@@ -326,7 +326,7 @@ async function scrapeHTML(ip: string, serverAuth: any) {
       url: `${ip}/Dashboard`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
-        Cookie: authCookies[ip] ? authCookies[ip] : ""
+        Cookie: authCookies[ip]
       }
     });
 
@@ -358,7 +358,7 @@ async function scrapeMainHTML(ip: string, serverAuth: string) {
       url: `${ip}/Main`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
-        Cookie: authCookies[ip] ? authCookies[ip] : ""
+        Cookie: authCookies[ip]
       }
     });
 
@@ -404,7 +404,7 @@ async function getVMs(
       url: `${ip}/plugins/dynamix.vm.manager/include/VMMachines.php`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
-        Cookie: authCookies[ip] ? authCookies[ip] : ""
+        Cookie: authCookies[ip]
       }
     });
 
@@ -532,7 +532,7 @@ async function getDockers(
       url: `${ip}/plugins/dynamix.docker.manager/include/DockerContainers.php`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
-        Cookie: authCookies[ip] ? authCookies[ip] : ""
+        Cookie: authCookies[ip]
       }
     });
 
@@ -1106,7 +1106,7 @@ export function gatherDetailsFromEditVM(
     url: `${ip}/VMs/UpdateVM?uuid=${id}`,
     headers: {
       Authorization: `Basic ${auth}`,
-      Cookie: authCookies[ip] ? authCookies[ip] : ""
+      Cookie: authCookies[ip]
     }
   })
     .then((response) => {
@@ -1472,7 +1472,7 @@ export async function requestChange(
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
-      Cookie: authCookies[ip] ? authCookies[ip] : ""
+      Cookie: authCookies[ip]
     },
     data: await buildForm(ip, auth, id, vmObject, create),
     httpAgent: new http.Agent({ keepAlive: true })
