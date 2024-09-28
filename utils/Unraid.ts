@@ -112,9 +112,11 @@ export async function getUnraidDetails(
 ) {
   for (const ip of Object.keys(servers)) {
     const server = servers[ip];
+    logger.debug(`Starting processing ${ip}`);
 
     try {
       if (!serverAuth[ip]) {
+        logger.info(`No serverAuth, skipping ${ip}`);
         continue;
       }
       if (!authCookies[ip]) {
@@ -124,12 +126,16 @@ export async function getUnraidDetails(
       await getServerDetails(server, serverAuth, ip);
       if (server.serverDetails.vmEnabled) {
         await getVMs(server, serverAuth, ip);
+      } else {
+        logger.warn(`Skipping VMs for ${ip}`);
       }
       await getUSBDetails(server, serverAuth, ip);
       getPCIDetails(server, ip);
 
       if (server.serverDetails.dockerEnabled) {
         await getDockers(server, serverAuth, ip);
+      } else {
+        logger.warn(`Skipping docker for ${ip}`);
       }
     } catch (error) {
       logger.error(error);
