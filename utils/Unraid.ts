@@ -144,6 +144,8 @@ export async function getUnraidDetails(
       } else {
         logger.warn(`Skipping docker for ${ip}`);
       }
+
+      logger.debug(servers[ip].serverDetails);
     } catch (error) {
       logger.error(error);
     }
