@@ -111,7 +111,6 @@ export async function getUnraidDetails(
 ) {
   for (const ip of Object.keys(servers)) {
     const server = servers[ip];
-    console.log(`trying ${ip}`);
 
     try {
       if (!serverAuth[ip]) {
