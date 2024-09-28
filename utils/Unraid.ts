@@ -302,7 +302,6 @@ const getServerDetails = async (
     console.log("Possibly expired cookies, clearing cookies for next call");
     authCookies[ip] = undefined;
   }
-  console.log(server.serverDetails);
 
   // docker not enabled, we clear the object
   if (!server.serverDetails.dockerEnabled) {
