@@ -81,7 +81,7 @@ export async function getImage(
         method: "get",
         headers: {
           Authorization: `Basic ${serverAuth[server]}`,
-          Cookie: authCookies[server] ? authCookies[server] : "",
+          Cookie: authCookies[server],
           "content-type": "image/png"
         }
       }
@@ -775,7 +775,7 @@ export async function getCSRFToken(server: string, auth: string) {
       url: `${server.includes("http") ? server : `http://${server}`}/Dashboard`,
       headers: {
         Authorization: `Basic ${auth}`,
-        Cookie: authCookies[server] ? authCookies[server] : ""
+        Cookie: authCookies[server]
       }
     });
 
@@ -829,7 +829,7 @@ export function changeArrayState(
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
-      Cookie: authCookies[server] ? authCookies[server] : ""
+      Cookie: authCookies[server]
     },
     data:
       action === "start"
@@ -869,7 +869,7 @@ export function changeServerState(
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
-          Cookie: authCookies[server] ? authCookies[server] : ""
+          Cookie: authCookies[server]
         },
         data: `csrf_token=${token}&cmd=shutdown`,
         httpAgent: new http.Agent({ keepAlive: true })
@@ -891,7 +891,7 @@ export function changeServerState(
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
-          Cookie: authCookies[server] ? authCookies[server] : ""
+          Cookie: authCookies[server]
         },
         data: `csrf_token=${token}&cmd=reboot`,
         httpAgent: new http.Agent({ keepAlive: true })
@@ -913,7 +913,7 @@ export function changeServerState(
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
-          Cookie: authCookies[server] ? authCookies[server] : ""
+          Cookie: authCookies[server]
         },
         data: `cmdStartMover=Move&csrf_token=${token}`,
         httpAgent: new http.Agent({ keepAlive: true })
@@ -935,7 +935,7 @@ export function changeServerState(
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
-          Cookie: authCookies[server] ? authCookies[server] : ""
+          Cookie: authCookies[server]
         },
         data: `startState=STARTED&file=&cmdCheck=Check&optionCorrect=correct&csrf_token=${token}`,
         httpAgent: new http.Agent({ keepAlive: true })
@@ -957,7 +957,7 @@ export function changeServerState(
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
-          Cookie: authCookies[server] ? authCookies[server] : ""
+          Cookie: authCookies[server]
         },
         data: `startState=STARTED&file=&csrf_token=${token}&cmdNoCheck=Cancel`,
         httpAgent: new http.Agent({ keepAlive: true })
@@ -979,7 +979,7 @@ export function changeServerState(
           Authorization: `Basic ${auth}`,
           "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
           "X-Requested-With": "XMLHttpRequest",
-          Cookie: authCookies[server] ? authCookies[server] : ""
+          Cookie: authCookies[server]
         }
       })
         .then(() => {
@@ -1016,7 +1016,7 @@ export async function changeVMState(
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
-      Cookie: authCookies[server] ? authCookies[server] : ""
+      Cookie: authCookies[server]
     },
     data: `uuid=${id}&action=${action}&csrf_token=${token}`,
     httpAgent: new http.Agent({ keepAlive: true })
@@ -1062,7 +1062,7 @@ export async function changeDockerState(
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
       "X-Requested-With": "XMLHttpRequest",
-      Cookie: authCookies[server] ? authCookies[server] : ""
+      Cookie: authCookies[server]
     },
     data: `container=${id}&action=${action.replace(
       "domain-",
