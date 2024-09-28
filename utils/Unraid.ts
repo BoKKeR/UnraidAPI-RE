@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import fs from "fs";
 import http from "http";
 import https from "https";
@@ -40,9 +40,25 @@ axios.defaults.httpsAgent = new https.Agent({
   rejectUnauthorized: false
 });
 
+// Add a request interceptor
+axios.interceptors.request.use(
+  (request) => {
+    // Log the request URL
+    console.log(`Request URL: ${request.url}`);
+    return request; // Don't forget to return the request or it will hang
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 const authCookies = {};
 
-export async function getImage(servers: RootServerJSONConfig, res, path) {
+export async function getImage(
+  servers: RootServerJSONConfig,
+  res,
+  path: string
+) {
   const serverAuth = JSON.parse(
     fs
       .readFileSync(
@@ -52,7 +68,7 @@ export async function getImage(servers: RootServerJSONConfig, res, path) {
       )
       .toString()
   );
-  await logIn(servers, serverAuth); // TODO: fix
+  // await logIn(servers, serverAuth); // TODO: fix
   let sent = false;
 
   Object.keys(servers).forEach((server) => {
@@ -101,9 +117,12 @@ export async function getUnraidDetails(
       if (!serverAuth[ip]) {
         continue;
       }
-      await logIn(server, serverAuth, ip);
+      if (!authCookies[ip]) {
+        await logIn(server, serverAuth, ip);
+      }
+
       await getServerDetails(server, serverAuth, ip);
-      if (!server.serverDetails.vmEnabled) {
+      if (server.serverDetails.vmEnabled) {
         await getVMs(server, serverAuth, ip);
       }
       await getUSBDetails(server, serverAuth, ip);
@@ -114,8 +133,6 @@ export async function getUnraidDetails(
       }
     } catch (error) {
       console.log(error);
-
-      console.log("in error");
     }
   }
 }
@@ -146,6 +163,7 @@ async function logIn(server: ServerJSONConfig, serverAuth: string, ip: string) {
 
 async function logInToUrl(url: string, data: any, ip: string) {
   try {
+    // Login often gets the cookie from the catch part
     const response = await axios({
       url,
       method: "POST",
@@ -161,6 +179,7 @@ async function logInToUrl(url: string, data: any, ip: string) {
 
     if (response.headers["set-cookie"] && response.headers["set-cookie"][0]) {
       authCookies[ip] = response.headers["set-cookie"][0];
+      console.log(`Updating auth cookie for ${ip} ${authCookies[ip]}`);
     }
   } catch (error) {
     if (
@@ -168,6 +187,7 @@ async function logInToUrl(url: string, data: any, ip: string) {
       error.response.headers["set-cookie"][0]
     ) {
       authCookies[ip] = error.response.headers["set-cookie"][0];
+      console.log(`Updating auth cookie for ${ip} ${authCookies[ip]}`);
     } else if (error.response?.headers.location) {
       return logInToUrl(
         error.response.headers.location,
@@ -272,6 +292,17 @@ const getServerDetails = async (
     updateFile(server, ip, "pciDetails");
     updateFile(server, ip, "usbDetails");
   }
+
+  if (
+    !server.serverDetails.arrayStatus &&
+    !server.serverDetails.cpu &&
+    !server.serverDetails.motherboard &&
+    !server.serverDetails.arrayProtection
+  ) {
+    console.log("Possibly expired cookies, clearing cookies for next call");
+    authCookies[ip] = undefined;
+  }
+  console.log(server.serverDetails);
 
   // docker not enabled, we clear the object
   if (!server.serverDetails.dockerEnabled) {
@@ -662,7 +693,7 @@ function hasChildren(remaining) {
   return remaining.indexOf("<") === 0 && remaining.indexOf("</") !== 0;
 }
 
-function processVMResponse(response, ip, auth) {
+function processVMResponse(response, ip: string, auth: string) {
   const object = [];
   groupVmDetails(response, object);
   return simplifyResponse(object, ip, auth);
@@ -1061,8 +1092,6 @@ export function gatherDetailsFromEditVM(
   vmObject,
   auth
 ) {
-  console.log("HERE --- - - - - -");
-
   const rawdata = fs.readFileSync("config/servers.json");
   const servers = JSON.parse(rawdata.toString());
   if (!vmObject) {
