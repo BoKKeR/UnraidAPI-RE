@@ -159,11 +159,7 @@ async function logIn(server: ServerJSONConfig, serverAuth: string, ip: string) {
   data.append("username", details.substring(0, details.indexOf(":")));
   data.append("password", details.substring(details.indexOf(":") + 1));
 
-  await logInToUrl(
-    `${ip.includes("http") ? ip : `http://${ip}`}/login`,
-    data,
-    ip
-  );
+  await logInToUrl(`${ip}/login`, data, ip);
   server.status = "online";
 }
 
@@ -228,7 +224,7 @@ async function getUSBDetails(server: ServerJSONConfig, serverAuth, ip: string) {
     try {
       const response = await axios({
         method: "get",
-        url: `${ip.includes("http") ? ip : `http://${ip}`}/VMs/UpdateVM?uuid=${
+        url: `${ip}/VMs/UpdateVM?uuid=${
           server.vm.details[Object.keys(server.vm.details)[0]].id
         }`,
         headers: {
@@ -320,7 +316,7 @@ async function scrapeHTML(ip: string, serverAuth: any) {
   try {
     const response = await axios({
       method: "get",
-      url: `${ip.includes("http") ? ip : `http://${ip}`}/Dashboard`,
+      url: `${ip}/Dashboard`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
         Cookie: authCookies[ip] ? authCookies[ip] : ""
@@ -352,7 +348,7 @@ async function scrapeMainHTML(ip: string, serverAuth: string) {
   try {
     const response = await axios({
       method: "get",
-      url: `${ip.includes("http") ? ip : `http://${ip}`}/Main`,
+      url: `${ip}/Main`,
       headers: {
         Authorization: `Basic ${serverAuth[ip]}`,
         Cookie: authCookies[ip] ? authCookies[ip] : ""
@@ -1104,7 +1100,7 @@ export function gatherDetailsFromEditVM(
   }
   return axios({
     method: "get",
-    url: `${ip.includes("http") ? ip : `http://${ip}`}/VMs/UpdateVM?uuid=${id}`,
+    url: `${ip}/VMs/UpdateVM?uuid=${id}`,
     headers: {
       Authorization: `Basic ${auth}`,
       Cookie: authCookies[ip] ? authCookies[ip] : ""
