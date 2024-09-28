@@ -20,6 +20,7 @@ import {
 } from "~/types/server";
 import { DockerDetail, UsbData } from "~/types/json-server";
 import env from "./../constants/env";
+import logger from "~/utils/logger";
 
 let retry;
 
@@ -388,6 +389,12 @@ function updateMQTT(client) {
         fs.readFileSync("config/mqttDisabledDevices.json").toString()
       );
     } catch (e) {
+      if (e.code === "ENOENT") {
+        logger.error(
+          "File config/mqttDisabledDevices.json not found! Creating it with empty array []"
+        );
+        fs.writeFileSync("config/mqttDisabledDevices.json", JSON.stringify([]));
+      }
       console.log(e);
     }
 
