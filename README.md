@@ -46,9 +46,11 @@ The tags follow the unraid major releases and should work for minor also:
 | MQTTBaseTopic | string | homeassistant | The base topic for all MQTT publishes
 | MQTTSecure | boolean | false | For MQTT Over SSL set to `true`
 | MQTTSelfSigned | boolean | false | If you are using a self signed certificate set to `true`
-| MQTTRefreshRate | number | 20 | Time in seconds to poll for updates
+| MQTTRefreshRate | number | 60 | Time in seconds to poll for updates
 | MQTTCacheTime | number | 60 | Time in minutes after which all entities will be updated in MQTT
+| LOG_LEVEL | string | info | info, debug, error, warn
 | KeyStorage | string | config | Where to store the secure keys. If left blank the keys are kept in memory and will be destroyed each time the container is updated. Set to config to have the data persist
+| WRITE_HTML_OUTPUT | boolean | false | Writes the html files it scrapes to config/html_output
 | Docker host port | number | 3005 | Default web-UI port. Container 80:3005 host
 
 
