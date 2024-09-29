@@ -15,7 +15,8 @@ export const extractServerDetails = (data: Buffer) => {
       '#db-box1 > [title="Memory Utilization"] > tr:nth-child(1) > td > div > span'
     )
       .text()
-      .replace("Memory: ", ""),
+      .replace("Memory: ", "")
+      .replace(/RAM:(100|[1-9]?[0-9])%/, ""),
     motherboard: $(
       '#db-box1 > [title="Motherboard Information"] > tr:nth-child(2) > td'
     )
