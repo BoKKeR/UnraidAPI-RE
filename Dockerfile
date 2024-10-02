@@ -1,18 +1,21 @@
-FROM node:16
+FROM node:16-bullseye-slim AS builder
 
 ENV NODE_ENV=production
 ENV HOST 0.0.0.0
 ENV PORT 80
 ENV NODE_OPTIONS="--max_old_space_size=4096"
+WORKDIR /app
+COPY . ./
 
-ENV APP_ROOT /app
+RUN npm install --omit=dev --legacy-peer-deps && npm run build
 
-RUN mkdir -p ${APP_ROOT}
-COPY . ${APP_ROOT}
-WORKDIR ${APP_ROOT}
-# Expose the app port
-EXPOSE 80
+# Run appliaction
+FROM node:16-bullseye-slim
+ENV NODE_ENV=production
+ENV NUXT_PORT=3005
+WORKDIR /app
 
-RUN npm install --omit=dev --legacy-peer-deps
-RUN npm run build
-CMD ["npm", "start"]
+COPY --from=builder /app/.nuxt ./.nuxt
+COPY --from=builder /app/node_modules ./node_modules
+
+CMD ["./node_modules/.bin/nuxt", "start"]
