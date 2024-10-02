@@ -12,9 +12,10 @@ RUN npm install --omit=dev --legacy-peer-deps && npm run build
 FROM node:16-bullseye-slim
 ENV NODE_ENV=production
 ENV NUXT_PORT=80
-ENV PORT 80
-WORKDIR /app
 
+ENV PORT 80
+EXPOSE 80
+WORKDIR /app
 COPY --from=builder /app/.nuxt ./.nuxt
 COPY --from=builder /app/node_modules ./node_modules
 
