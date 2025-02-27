@@ -269,6 +269,32 @@ async function getUSBDetails(server: ServerJSONConfig, serverAuth, ip: string) {
   }
 }
 
+const getMoverRunning = async (ip: string, serverAuth: string): Promise<boolean> => {
+  try {
+    const response = await axios({
+      method: "get",
+      url: `${ip}/sub/mymonitor`,
+      headers: {
+        Authorization: `Basic ${serverAuth[ip]}`,
+        Cookie: authCookies[ip]
+      }
+    });
+
+    callSucceeded(ip);
+
+    return response.data.trim() === "2";
+  } catch (e) {
+    logger.info(`Get mover running for ip: ${ip} Failed`);
+    if (e.response?.status) {
+      callFailed(ip, e.response.status);
+    } else {
+      callFailed(ip, 404);
+    }
+    logger.error(e.message);
+  }
+  return false;
+}
+
 const getServerDetails = async (
   server: ServerJSONConfig,
   serverAuth: string,
@@ -283,13 +309,18 @@ const getServerDetails = async (
     return;
   }
 
-  server.serverDetails =
-    (await scrapeHTML(ip, serverAuth)) || server.serverDetails;
-  server.serverDetails =
-    {
-      ...(await scrapeMainHTML(ip, serverAuth)),
-      ...server.serverDetails
-    } || server.serverDetails;
+  const [serverDetails, mainDetails, moverRunning] = await Promise.all([
+    scrapeHTML(ip, serverAuth),
+    scrapeHTML(ip, serverAuth),
+    getMoverRunning(ip, serverAuth)
+  ]);
+
+  server.serverDetails = {
+    ...server.serverDetails,
+    ...mainDetails,
+    ...serverDetails,
+    moverRunning,
+  }
 
   server.serverDetails.on = server.status === "online";
   updateFile(server, ip, "serverDetails");
@@ -379,7 +410,6 @@ async function scrapeMainHTML(ip: string, serverAuth: string) {
         ">"
       ).split(",")[0],
       arrayProtection: protection.includes(">") ? undefined : protection,
-      moverRunning: response.data.includes("Disabled - Mover is running."),
       parityCheckRunning: response.data.includes("Parity-Check in progress."),
       vmEnabled: enableVmFetching(response.data),
       dockerEnabled: enableDockerFetching(response.data)
